@@ -58,6 +58,47 @@ class CatanBoard:
         # Location of the robber:
         self.robber_tile = hexgrid.tile_id_to_coord(tiles.index(HexType.DESERT) + 1)
 
+        # Information we keep to simplify calculations:
+        self.legal_nodes = hexgrid.legal_node_coords()
+
+    def get_empty_edges_around_node(self, node):
+        ret = []
+        edges = get_edges_adjacent_to_node(node)
+        for edge in edges:
+            if not edge in self.roads.keys():
+                ret.append(edge)
+        return ret
+
+    # Methods for the setup phase of the game:
+    def setup_get_available_settlement_nodes(self):
+        return self.legal_nodes.copy()
+
+    def setup_place_settlement_and_road(self, player_id, node_id, edge_id):
+        if not node_id in self.legal_nodes:
+            raise ValueError("Couldn't place settlement, illegal node id.")
+        if edge_id in self.roads.keys():
+            raise ValueError("Couldn't place road, illegal edge id.")
+        self.legal_nodes.remove(node_id)
+        # Remove adjecent nodes (since it's illegal to build next to a settlement)
+        for node in get_nodes_adjacent_node(node_id):
+            self.legal_nodes.remove(node)
+        self.roads[edge_id] = player_id
+        self.pieces[node_id] = (player_id, PieceType.SETTLEMENT)
+
+
+# Auxiliary functions for hexgrid
+def get_nodes_adjacent_node(node):
+    if node % 2 == 0:
+        return [node - 0xF, node + 0x11, node - 0x11] # N, SE, SW
+    else:
+        return [node - 0x11, node + 0x11, node + 0xF] # NW, NE, S
+
+def get_edges_adjacent_to_node(node):
+    if node % 2 == 0:
+        return [node, node - 0x10, node - 0x11]
+    else:
+        return [node, node - 0x01, node - 0x11]
+
 if __name__ == "__main__":
     board = CatanBoard()
 
