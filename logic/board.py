@@ -1,5 +1,6 @@
 from enum import Enum
 from collections import defaultdict
+from state import 
 import hexgrid
 
 # Some definitions:
@@ -18,6 +19,13 @@ class HarborType(Enum):
     BRICK = 4
     ORE = 5
     ANY3 = 6
+
+class Resource(IntEnum):
+    WOOD = 0
+    BRICK = 1
+    SHEEP = 2
+    WHEAT = 3
+    ORE = 4
 
 class PieceType(Enum):
     SETTLEMENT = 1
@@ -42,10 +50,11 @@ class CatanBoard:
         self.hex_types = {}
         for i in range(len(tiles)):
             self.hex_types[hexgrid.tile_id_to_coord(i +1)] = tiles[i];
-        # The number (the result of a dice roll) of each hex, dictionary with tile coordinates, NOT ids (see the link up)
-        self.hex_numbers = {}
+        # The number (the result of a dice roll) of each hex
+        # dictionary with roll result -> tile coordinates
+        self.tile_numbers = defaultdict(list)
         for i in range(len(numbers)):
-            self.hex_numbers[hexgrid.tile_id_to_coord(i +1)] = numbers[i];
+            self.tile_numbers[numbers[i]] += [hexgrid.tile_id_to_coord(i +1)];
 
         # Dictionary of roads (from index to player index)
         self.roads = {}
@@ -133,7 +142,20 @@ class CatanBoard:
         :param rolled_number: A number from 2 to 12, the result of the dice 
         :return: A dict player_id -> len 5 list [WOOD, BRICK, SHEEP, WHEAT, ORE]
         """
-        pass
+        ret = defaultdict(lambda: [0]*5)
+        tiles = self.tile_numbers[rolled_number]
+        for tile in tiles:
+            resource_type = get_resource_type_of_tile(tile)
+            nodes = get_nodes_adjacent_to_tile(tile)
+            for node in nodes:
+                player, piece = self.pieces.get(node, (None, None))
+                if player is not None:
+                    if piece == PieceType.SETTLEMENT:
+                        ret[player][resource_type] += 1
+                    elif piece == PieceType.CITY:
+                        ret[player][resource_type] += 2
+        return ret
+            
 
     # Methods for the game_state:
     def get_player_ports(self, player_id):
@@ -185,6 +207,22 @@ def get_edges_adjacent_to_edge(edge):
     for node in nodes:
         edges += get_edges_adjacent_to_node(node)
     return edges
+
+def get_nodes_adjacent_to_tile(tile):
+    return [tile + 0x1, tile + 0x10, tile+0x21, tile+0x12, tile-0x10, tile-0x1]
+
+def get_resource_type_of_tile(tile):
+    hextype = self.tile_numbers[tile]
+    if hextype == HexType.FOREST:
+        return Resource.WOOD
+    elif hextype == HexType.PASTURE:
+        return Resource.SHEEP
+    elif hextype == HexType.HILL:
+        return Resource.BRICK
+    elif hextype == HexType.FIELD:
+        return Resource.WHEAT
+    elif hextype == HexType.MOUNTAIN:
+        return Resource.ORE
 
 
 
