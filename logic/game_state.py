@@ -86,30 +86,26 @@ class GameState():
             self.__robber_location = new_location
 
     def get_player_with_most_victory_points(self):
-        __player1_dev_cards = self.__player1.get_used_dev_cards()
-        __player2_dev_cards = self.__player2.get_used_dev_cards()
-        __player3_dev_cards = self.__player3.get_used_dev_cards()
-        __player4_dev_cards = self.__player4.get_used_dev_cards()
+        # todo: continue writing
+        pass
 
 
-
-
-
-        return max(self.__player1.get)
 
     def _player_with_largest_army(self):
-        __player1_knights = self.__player1.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-        __player2_knights = self.__player2.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-        __player3_knights = self.__player3.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-        __player4_knights = self.__player4.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-
-        __players_knights = [__player1_knights,__player2_knights,__player3_knights,__player4_knights]
-
-        # check if there isn't a tie:
-        if len(set(__players_knights)) == len(__players_knights):
-
-            __player_with_most = max(range(len(__players_knights)), key = lambda index: __players_knights[index])
-
+        # todo: continue writing
+        pass
+        # __player1_knights = self.__player1.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
+        # __player2_knights = self.__player2.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
+        # __player3_knights = self.__player3.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
+        # __player4_knights = self.__player4.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
+        #
+        # __players_knights = [__player1_knights,__player2_knights,__player3_knights,__player4_knights]
+        #
+        # # check if there isn't a tie:
+        # if len(set(__players_knights)) == len(__players_knights):
+        #
+        #     __player_with_most = max(range(len(__players_knights)), key = lambda index: __players_knights[index])
+        #
 
     def _player_with_longest_road(self):
         pass
