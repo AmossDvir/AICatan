@@ -3,6 +3,8 @@ from collections import defaultdict
 from state import 
 import hexgrid
 
+
+def
 # Some definitions:
 class HexType(Enum):
     FOREST = 1
