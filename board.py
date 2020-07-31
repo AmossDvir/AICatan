@@ -3,6 +3,8 @@ from collections import defaultdict
 from state import 
 import hexgrid
 
+
+def
 # Some definitions:
 class HexType(Enum):
     FOREST = 1
@@ -70,7 +72,8 @@ class CatanBoard:
 
         # Information we keep to avoid complex calculations:
         self.legal_nodes = hexgrid.legal_node_coords()
-        self.player_harbors = defaultdict(list) # player -> list of HarborType
+        self.longest_road_player = None
+        self.longest_road_length = 4 # So once someone gets to five he gets it
 
     def get_empty_edges_around_node(self, node):
         """
@@ -136,6 +139,8 @@ class CatanBoard:
         # Make sure the player have another road touching this road:
         if player_id not in [self.roads.get(e, -1) for e in get_edges_adjacent_to_edge(edge_id)]
             raise ValueError("Couldn't place road, the player own no adjecent roads.")
+        self.roads[edge_id] = player_id
+        self.update_player_longest_road(player_id)
 
     def distribute_resources(self, rolled_number):
         """
@@ -158,34 +163,81 @@ class CatanBoard:
             
 
     # Methods for the game_state:
-    def get_player_ports(self, player_id):
+    def get_player_harbors(self, player_id):
         """
         :param player_id: The player we want the info about
         :return: A list of HarborType that describes what kind of harbors the player control
         """
-        pass
+        harbors = []
+        for t in HarborType:
+            for node in self.harbors[t]:
+                if self.pieces.get(node, (None, None)) == player_id:
+                    harbors.append(t)
+                    break
+        return harbors
 
     def get_player_legal_settlement_nodes(self, player_id):
         """
         :param player_id: The player we want the info about
         :return: A list of nodes that the player allowed to build settlement in
         """
-        pass
+        ret = set()
+        for node in self.legal_nodes:
+            # Check if we have road nearby:
+            for edge in get_edges_adjacent_to_node(node):
+                if self.roads.get(edge, None) == player_id:
+                    ret.append(node)
+                    break
+        return ret
 
     def get_player_legal_road_edges(self, player_id):
         """
         :param player_id: The player we want the info about
         :return: A list of edges that the player in build road in
         """
-        pass
+        ret = []
+        for edge in self.roads:
+            for adj in get_edges_adjacent_to_edge(edge):
+                if adj not in self.roads:
+                    ret.append(adj)
+        return ret
+
 
     def get_player_legal_city_nodes(self, player_id):
         """
         :param player_id: The player we want the info about
         :return: A list of nodes that the player allowed to build settlement in
         """
+        ret = []
+        for piece_node in self.pieces:
+            player, piece_type = self.pieces[piece_node]
+            if player == player_id and piece_type == PieceType.SETTLEMENT:
+                ret.append(piece_node)
+        return ret
+
+    def get_player_with_longest_road(self):
+        return self.longest_road_player
+
+    def update_player_longest_road(self, player_id):
+        """
+        Checks if the player have the longest road,
+        and update self.longest_road_player and self.longest_road_length 
+        """
+        # This is complicated...
         pass
 
+    def get_board_victory_points(self):
+        """
+        returns a dict from player_id to amount of victory points of boards
+        """
+        points = defaultdict(lambda: 0)
+        for piece in self.pieces:
+            player_id, piece_type = self.pieces[piece]
+            if piece_type == PieceType.SETTLEMENT:
+                points[player_id] += 1
+            elif piece_type == PieceType.CITY:
+                points[player_id] += 2
+        return points 
 
 
 # Auxiliary functions for hexgrid
