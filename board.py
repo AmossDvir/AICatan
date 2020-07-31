@@ -1,38 +1,6 @@
-from enum import Enum
+from enums import *
 from collections import defaultdict
-from state import 
 import hexgrid
-
-
-def
-# Some definitions:
-class HexType(Enum):
-    FOREST = 1
-    PASTURE = 2
-    FIELD = 3
-    HILL = 4
-    MOUNTAIN = 5
-    DESERT = 6
-
-class HarborType(Enum):
-    WOOD = 1
-    SHEEP = 2
-    WHEAT = 3
-    BRICK = 4
-    ORE = 5
-    ANY3 = 6
-
-class Resource(IntEnum):
-    WOOD = 0
-    BRICK = 1
-    SHEEP = 2
-    WHEAT = 3
-    ORE = 4
-
-class PieceType(Enum):
-    SETTLEMENT = 1
-    CITY = 2
-
 
 # The order is according to the first image in:
 # https://github.com/rosshamish/hexgrid/

@@ -2,17 +2,17 @@ from player import *
 from game_state import *
 from board import *
 import random as rnd
-
+import argparse
+from agents import agent
 
 class GameRunner:
-    PLAYERS_ORDER_SETUP = [1,2,3,4,4,3,2,1]
-    def __init__(self, player1, player2, player3, player4, board, game_state):
-        self.__player1 = player1
-        self.__player2 = player2
-        self.__player3 = player3
-        self.__player4 = player4
-        self.__board = board
-        self.__game_state = game_state
+    def __init__(self, agents):
+        self.agents = {} # Dict from player_id to agent
+        for i, agent in enumerate(agents):
+            self.agents[i + 1] = agent
+        self.player_num = len(agents)
+        self.__board = CatanBoard()
+        self.__game_state = GameState()
         self.__dices_rolled = False
 
     def buy_dev_card_for_player(self, player):
@@ -36,7 +36,7 @@ class GameRunner:
         """
         turn = 1
         while True:
-            if turn%5 == 0:
+            if turn % (self.player_num + 1) == 0:
                 turn = 1
             yield turn
             turn += 1
@@ -48,32 +48,46 @@ class GameRunner:
         :param is_setup_phase: Boolean: determine if it is the initial part
         :return: None
         """
+        PLAYERS_ORDER_SETUP = list(range(1, self.player_num+1)) + list (range(self.player_num, 0, -1))
         if is_setup_phase:
-            for turn_setup in GameRunner.PLAYERS_ORDER_SETUP:
-                node = self.randomly_choose(tuple(self.__board.setup_get_available_settlement_nodes()))
-                edge = self.randomly_choose(self.__board.get_empty_edges_around_node(node))
-                self.__board.setup_place_settlement_and_road(turn_setup,node,edge)
-        else:
-            for turn in self.turn_gen():
-                dices = self.__game_state.roll_dice()
+            for i in PLAYERS_ORDER_SETUP:
+                action = self.agents[i].play(self.__game_state)
+                self.__game_state = self.__game_state.generate_successor(action)
+    
+        for turn in self.turn_gen():
+            while self.__game_state.current_player() == turn:
+                # Get actions from the agents as long as it is it's turn
+                action = self.agents[i].play(self.__game_state)
+                self.__game_state = self.__game_state.generate_successor(action)
+                if self.__game_state.is_game_over():
+                    self.game_over()
 
-    def randomly_choose(self,choices_lst):
-        """
-        ****only for the meanwhile until we create smarter funcs****
-        :param choices_lst: List
-        :return: Object
-        """
-        return rnd.choice(choices_lst)
+    def game_over(self):
+        print(f'\n\nGame has ended!!!')
+        print(f'player {self.__game_state.get_winner()} have won!\n\n')
+        exit(0)
+            
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-a', '--agents',
+        help='Agents type', type=str.lower, # This casts the input into lowercase
+        metavar="agent", default='random', nargs='+')
+    args = parser.parse_args()
+    return args
 
 if __name__ == '__main__':
-    board = CatanBoard()
-    p1 = Player(1)
-    p2 = Player(2)
-    p3 = Player(3)
-    p4 = Player(4)
 
-    game_state = GameState(p1, p2, p3, p4, board)
-    game = GameRunner(p1, p2, p3, p4, board, game_state)
-    # for turn1 in game.turn_gen():
-    #     print(turn1)
+    args = parse_args()
+    if len(args.agents) != 3 and len(args.agents) != 4:
+        raise ValueError(f'Invalid number of players! got {len(args.agents)} agents.')
+
+    agents = []
+    for i, agent_name in enumerate(args.agents):
+        # Make a new agent of the given type
+        # i+1 is the player id (we start from 1)
+        agents.append(make_agent(agent_name, i + 1)) 
+
+    game = GameRunner(agents)
     game.run_game(True)
