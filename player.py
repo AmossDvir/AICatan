@@ -1,25 +1,5 @@
-from enum import Enum
 import operator
-from game_state import DevCardsTypes
-from game_state import HarbourTypes
-from game_state import GameState
-from game_state import Cost
-
-
-
-class Resources(Enum):
-    WOOD = 0
-    BRICK = 1
-    SHEEP = 2
-    WHEAT = 3
-    ORE = 4
-
-class BuildingType(Enum):
-    ROAD = 0
-    SETTLEMENT = 1
-    CITY = 2
-
-
+from enums import DevCardsTypes, HarborType, Cost, Resource, BuildingType
 
 class Player():
     NUM_OF_RESOURCES = 5
@@ -40,7 +20,7 @@ class Player():
         self.__cities_built = 0
         self.__roads_built = 0
         self.__victory_points = 0
-        self.__harbours = [False,False,False,False,False,False]
+        self.__harbors = [False,False,False,False,False,False]
 
         # a dictionary to help calling the functions for building:
         self.__build_func_call = {BuildingType.ROAD: self._build_road,
@@ -121,9 +101,6 @@ class Player():
         # check if enough resources:
         if not all(list(map(operator.ge, self.__player_resources, Cost.ROAD.value))):
             raise ValueError("Not Enough Resources")
-
-
-
         # check if available roads:
         elif self.get_avail_roads() < 1:
             raise ValueError("No Roads Left")
@@ -211,15 +188,15 @@ class Player():
         # todo: continue writing
 
 
-    def update_harbour_ownership(self,harbour_type):
+    def update_harbor_ownership(self,harbor_type):
         """
-        updates the harbours, if the player has built a settlement on a harbour
-        :param harbour_type:
+        updates the harbors, if the player has built a settlement on a harbor
+        :param harbor_type:
         :return:
         """
-        if harbour_type.isinstance(HarbourTypes):
-            self.__harbours[harbour_type.value] = True
-        else: raise ValueError(f"{harbour_type} Is Not a Valid Harbour Type")
+        if harbor_type.isinstance(HarborType):
+            self.__harbors[harbor_type.value] = True
+        else: raise ValueError(f"{harbor_type} Is Not a Valid harbor Type")
 
     def generate_possible_trades(self):
         """
@@ -227,7 +204,7 @@ class Player():
         :return: List
         """
         trade_value = 4
-        if self.__harbours[HarbourTypes.GENERAL3.value]:
+        if self.__harbors[HarborType.ANY3.value]:
             trade_value = 3
         return self.possible_trades_helper(0, self.__player_resources, [],trade_value)
 
