@@ -1,9 +1,12 @@
 import random as rnd
 import argparse
+<<<<<<< HEAD
 
 from player import Player
 from game_state import GameState
 from board import CatanBoard
+=======
+>>>>>>> e76e2c3bf4bc683b858f3b1edbea8177a708c465
 from agents import agent
 
 class GameRunner:
@@ -13,7 +16,11 @@ class GameRunner:
             self.agents[i + 1] = agent
         self.player_num = len(agents)
         self.__board = CatanBoard()
+<<<<<<< HEAD
         self.__game_state = GameState(self.player_num, self.__board)
+=======
+        self.__game_state = GameState()
+>>>>>>> e76e2c3bf4bc683b858f3b1edbea8177a708c465
         self.__dices_rolled = False
 
     def buy_dev_card_for_player(self, player):
