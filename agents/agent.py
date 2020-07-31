@@ -1,8 +1,8 @@
 from agents.random_agent import RandomAgent
 
-def make_agent(agent_name):
+def make_agent(agent_name, player_id):
     if agent_name == 'random':
-        return RandomAgent()
+        return RandomAgent(player_id)
     else:
         raise ValueError(f'Unrecognised agent name: {agent_name}')
 

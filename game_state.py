@@ -1,45 +1,18 @@
-from enum import Enum
+from enums import *
 import random as rnd
-import player
-
-
-class DevCardsTypes(Enum):
-    KNIGHT = 0
-    VICTORY_CARD = 1
-    MONOPOLY = 2
-    YEAR_OF_PLENTY = 3
-    ROAD_BUILDING = 4
-
-class HarbourTypes(Enum):
-    WOOD = 0
-    BRICK = 1
-    SHEEP = 2
-    WHEAT = 3
-    ORE = 4
-    GENERAL3 = 5
-
-class Cost(Enum):
-    ROAD = [1, 1, 0, 0, 0]
-    SETTLEMENT = [1, 1, 1, 1, 0]
-    CITY = [0, 0, 0, 2, 3]
-    DEVCARD = [0, 0, 1, 1, 1]
-
+from player import Player
+from action import Action
+import copy
 
 class GameState():
-
-
-    def __init__(self, player1, player2, player3, player4, board):
-        self.__player1 = player1
-        self.__player2 = player2
-        self.__player3 = player3
-        self.__player4 = player4
-        self.__map_player_to_num = {1:self.__player1,2:self.__player2,3:self.__player3,4:self.__player4}
-
+    def __init__(self, player_num, board):
+        self.__players = {i: Player(i) for i in range(1, player_num+1)}
         self.__board = board
         self.__dev_cards = [14,5,2,2,2]
-        # self.__is_pre_game_phase = True
-        self.__robber_location = 0
         self.__player_with_largest_army = None
+        self.__current_player = 1
+        self.__dice_rolled = False
+        self.__is_pre_game_phase = True
 
     def start_game(self):
         self.__is_pre_game_phase = False
@@ -62,10 +35,6 @@ class GameState():
         # check if dev cards stack is empty:
         if set(self.__dev_cards) == {0}:
             raise ValueError("No More Development Cards")
-
-
-
-
         else:
             # calculate the weight of each type of card among the stack:
             knights_wght = int(self.__dev_cards[DevCardsTypes.KNIGHT.value] / sum(self.__dev_cards) * 100)
@@ -82,6 +51,7 @@ class GameState():
             # print(knights_wght, Victory_card_wght, monopoly_wght,year_of_plenty_wght,road_building_wght)
             # print("------------------")
             return __card
+    
     def get_dev_cards(self):
         return self.__dev_cards
 
@@ -91,8 +61,6 @@ class GameState():
     def get_player_with_most_victory_points(self):
         # todo: continue writing
         pass
-
-
 
     def player_with_largest_army(self):
         # store all knights' players:
@@ -119,13 +87,82 @@ class GameState():
 
 
     def _player_with_longest_road(self):
-        # todo: continue writing
+        return self.__board.get_player_with_longest_road()
 
-        pass
+    def player_legal_actions(self, player_id):
+        actions = []
+        # if not current player return empty
+        if player_id is not self.__current_player:
+            return actions
+        if self.__is_pre_game_phase:
+            return self.pre_game_legal_actions(player_id)
+        if not self.__dice_rolled:
+            return self.preroll_player_legal_actions(player_id)
+        else:
+            # TRADE
+            actions += self.__players[player_id].get_all_legal_trades()
+            # BUY_DEV_CARD
+            if self.__players[player_id].check_enough_resources(COST.DEVCARD):
+                actions += [Action(ActionType.BUY_DEV_CARD, None)]
+            # BUILD ROAD
+            if self.__players[player_id].check_enough_resources(COST.ROAD):
+                legal_edges = self.__board.get_player_legal_road_edges(player_id)
+                actions += [Action(ActionType.BUILD_ROAD, edge) for edge in legal_edges]
+            # BUILD_SETTLEMENT
+            if self.__players[player_id].check_enough_resources(COST.SETTLEMENT):
+                legal_nodes = self.__board.get_player_legal_settlement_nodes(player_id)
+                actions += [Action(ActionType.BUILD_SETTLEMENT, node) for node in legal_nodes]
+            # BUILD_CITY
+            if self.__players[player_id].check_enough_resources(COST.CITY):
+                legal_nodes = self.__board.get_player_legal_city_nodes(player_id)
+                actions += [Action(ActionType.BUILD_CITY, node) for node in legal_nodes]
+            # OPEN_DEV_CARD
+            legal_devs = self.__players[player_id].get_legal_dev_cards()
+            actions += [Action(ActionType.OPEN_DEV_CARD, card) for card in legal_devs]
+            # END_TURN
+            actions += [Action(ActionType.END_TURN, None)]
+            return actions
 
+    def pre_game_legal_actions(self, player_id):
+        actions = []
+        nodes = self.__board.setup_get_available_settlement_nodes()
+        for node in nodes:
+            edges = self.__board.get_empty_edges_around_node(node)
+            for edge in edges:
+                actions.append(Action(ActionType.SETUP_BUILD, (node, edge)))
+        return actions
+
+    def preroll_player_legal_actions(self, player_id):
+        actions = [Action(ActionType.ROLL_DICE, None)]
+        actions += self.__players[player_id].get_preroll_dev_cards()
+        return actions
+
+    def generate_successor(self, action):
+        succ = copy.deepcopy(self)
+        # TODO: Implement a lot
+        if action.action_type == ActionType.TRADE:
+            pass
+        elif action.action_type == ActionType.BUY_DEV_CARD:
+            pass
+        elif action.action_type == ActionType.BUILD_ROAD:
+            pass
+        elif action.action_type == ActionType.BUILD_SETTLEMENT:
+            pass
+        elif action.action_type == ActionType.BUILD_CITY:
+            pass
+        elif action.action_type == ActionType.OPEN_DEV_CARD:
+            pass
+        elif action.action_type == ActionType.MOVE_ROBBER:
+            pass
+        elif action.action_type == ActionType.ROLL_DICE:
+            pass
+        elif action.action_type == ActionType.END_TURN:
+            pass
+        elif action.action_type == ActionType.SETUP_BUILD:
+            pass
+        
 
 if __name__ == '__main__':
-
     pass
     # game = GameState(1, 2, 3, 4, 2)
     # print(game.roll_dice())
