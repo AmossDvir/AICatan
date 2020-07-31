@@ -6,7 +6,7 @@ import copy
 
 class GameState():
     def __init__(self, player_num, board):
-        self.__players = {i: Player(i) for i in range(1, player_num+1)}
+        self.__players = {i: Player(i) for i in range(1, player_num+3)}
         self.__board = board
         self.__dev_cards = [14,5,2,2,2]
         self.__player_with_largest_army = None
@@ -63,12 +63,14 @@ class GameState():
         pass
 
     def player_with_largest_army(self):
-        # store all knights' players:
-        __player1_knights = self.__player1.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-        __player2_knights = self.__player2.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-        __player3_knights = self.__player3.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-        __player4_knights = self.__player4.get_used_dev_cards()[DevCardsTypes.KNIGHT.value]
-        __players_knights = [__player1_knights,__player2_knights,__player3_knights,__player4_knights]
+        """
+        Finds the player with most knights
+        :return: Player (None if no one has the largest army)
+        """
+        # store all players' knights:
+
+
+        __players_knights = [knights.get_used_dev_cards()[DevCardsTypes.KNIGHT.value] for knights in self.__players.values()]
 
         # find maximum:
         __max_knights = max(__players_knights)
@@ -81,12 +83,12 @@ class GameState():
         if __num_of_players_with_most > 1:
             return self.__player_with_largest_army # just return the first one who reached to it
         else:
-            self.__player_with_largest_army = self.__map_player_to_num[ max(range(len(__players_knights)), key = lambda index: __players_knights[index]) + 1]
+            self.__player_with_largest_army = [max(range(len(__players_knights)), key = lambda index: __players_knights[index]) + 1]
 
         return self.__player_with_largest_army
 
 
-    def _player_with_longest_road(self):
+    def _player_with_longest_road(self)-> list:
         return self.__board.get_player_with_longest_road()
 
     def player_legal_actions(self, player_id):
@@ -102,18 +104,18 @@ class GameState():
             # TRADE
             actions += self.__players[player_id].get_all_legal_trades()
             # BUY_DEV_CARD
-            if self.__players[player_id].check_enough_resources(COST.DEVCARD):
+            if self.__players[player_id].check_enough_resources(Cost.DEVCARD):
                 actions += [Action(ActionType.BUY_DEV_CARD, None)]
             # BUILD ROAD
-            if self.__players[player_id].check_enough_resources(COST.ROAD):
+            if self.__players[player_id].check_enough_resources(Cost.ROAD):
                 legal_edges = self.__board.get_player_legal_road_edges(player_id)
                 actions += [Action(ActionType.BUILD_ROAD, edge) for edge in legal_edges]
             # BUILD_SETTLEMENT
-            if self.__players[player_id].check_enough_resources(COST.SETTLEMENT):
+            if self.__players[player_id].check_enough_resources(Cost.SETTLEMENT):
                 legal_nodes = self.__board.get_player_legal_settlement_nodes(player_id)
                 actions += [Action(ActionType.BUILD_SETTLEMENT, node) for node in legal_nodes]
             # BUILD_CITY
-            if self.__players[player_id].check_enough_resources(COST.CITY):
+            if self.__players[player_id].check_enough_resources(Cost.CITY):
                 legal_nodes = self.__board.get_player_legal_city_nodes(player_id)
                 actions += [Action(ActionType.BUILD_CITY, node) for node in legal_nodes]
             # OPEN_DEV_CARD
@@ -164,7 +166,9 @@ class GameState():
 
 if __name__ == '__main__':
     pass
-    # game = GameState(1, 2, 3, 4, 2)
+    # game = GameState(1, 2)
+    # game.withdraw_dev_card()
+    # print(game.player_with_largest_army())
     # print(game.roll_dice())
 
     # print(p1)

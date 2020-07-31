@@ -40,11 +40,11 @@ class Player():
     def __str__(self):
 
         title = f"Player number {self.__player_num}:\nResources:\t\t\tDev Cards:\n"
-        line1 = f"\tWood: {self.__player_resources[Resources.WOOD.value]}\t\t\t\tKnights: {self.__player_dev_cards[DevCardsTypes.KNIGHT.value]}\n"
-        line2 = f"\tBrick: {self.__player_resources[Resources.BRICK.value]}\t\t\tVictory Cards: {self.__player_dev_cards[DevCardsTypes.VICTORY_CARD.value]}\n"
-        line3 = f"\tSheep: {self.__player_resources[Resources.SHEEP.value]}\t\t\tMonopoly: {self.__player_dev_cards[DevCardsTypes.MONOPOLY.value]}\n"
-        line4 = f"\tWheat: {self.__player_resources[Resources.WHEAT.value]}\t\t\tYear of Plenty: {self.__player_dev_cards[DevCardsTypes.YEAR_OF_PLENTY.value]}\n"
-        line5 = f"\tOre: {self.__player_resources[Resources.ORE.value]}\t\t\t\tRoad Building: {self.__player_dev_cards[DevCardsTypes.ROAD_BUILDING.value]}"
+        line1 = f"\tWood: {self.__player_resources[Resource.WOOD.value]}\t\t\t\tKnights: {self.__player_dev_cards[DevCardsTypes.KNIGHT.value]}\n"
+        line2 = f"\tBrick: {self.__player_resources[Resource.BRICK.value]}\t\t\tVictory Cards: {self.__player_dev_cards[DevCardsTypes.VICTORY_CARD.value]}\n"
+        line3 = f"\tSheep: {self.__player_resources[Resource.SHEEP.value]}\t\t\tMonopoly: {self.__player_dev_cards[DevCardsTypes.MONOPOLY.value]}\n"
+        line4 = f"\tWheat: {self.__player_resources[Resource.WHEAT.value]}\t\t\tYear of Plenty: {self.__player_dev_cards[DevCardsTypes.YEAR_OF_PLENTY.value]}\n"
+        line5 = f"\tOre: {self.__player_resources[Resource.ORE.value]}\t\t\t\tRoad Building: {self.__player_dev_cards[DevCardsTypes.ROAD_BUILDING.value]}"
 
         return title + line1 + line2 + line3 + line4 + line5
 
@@ -239,7 +239,7 @@ class Player():
 
 if __name__ == '__main__':
     pass
-    # p = Player(55)
+    p = Player(55)
     # p.add_resources([3,5, 4, 4, 3])
     # p.build(BuildingType.ROAD)
     # p.subtract_resources([0, 1, 0, 1, 0])

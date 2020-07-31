@@ -19,12 +19,12 @@ class CatanBoard:
         # The type of each hex, dictionary with tile coordinates, NOT ids (see the link up)
         self.hex_types = {}
         for i in range(len(tiles)):
-            self.hex_types[hexgrid.tile_id_to_coord(i +1)] = tiles[i];
+            self.hex_types[hexgrid.tile_id_to_coord(i +1)] = tiles[i]
         # The number (the result of a dice roll) of each hex
         # dictionary with roll result -> tile coordinates
         self.tile_numbers = defaultdict(list)
         for i in range(len(numbers)):
-            self.tile_numbers[numbers[i]] += [hexgrid.tile_id_to_coord(i +1)];
+            self.tile_numbers[numbers[i]] += [hexgrid.tile_id_to_coord(i +1)]
 
         # Dictionary of roads (from index to player index)
         self.roads = {}
