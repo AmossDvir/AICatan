@@ -1,38 +1,6 @@
-from enum import Enum
+from enums import *
 from collections import defaultdict
-from state import 
 import hexgrid
-
-
-def
-# Some definitions:
-class HexType(Enum):
-    FOREST = 1
-    PASTURE = 2
-    FIELD = 3
-    HILL = 4
-    MOUNTAIN = 5
-    DESERT = 6
-
-class HarborType(Enum):
-    WOOD = 1
-    SHEEP = 2
-    WHEAT = 3
-    BRICK = 4
-    ORE = 5
-    ANY3 = 6
-
-class Resource(IntEnum):
-    WOOD = 0
-    BRICK = 1
-    SHEEP = 2
-    WHEAT = 3
-    ORE = 4
-
-class PieceType(Enum):
-    SETTLEMENT = 1
-    CITY = 2
-
 
 # The order is according to the first image in:
 # https://github.com/rosshamish/hexgrid/
@@ -51,12 +19,12 @@ class CatanBoard:
         # The type of each hex, dictionary with tile coordinates, NOT ids (see the link up)
         self.hex_types = {}
         for i in range(len(tiles)):
-            self.hex_types[hexgrid.tile_id_to_coord(i +1)] = tiles[i];
+            self.hex_types[hexgrid.tile_id_to_coord(i +1)] = tiles[i]
         # The number (the result of a dice roll) of each hex
         # dictionary with roll result -> tile coordinates
         self.tile_numbers = defaultdict(list)
         for i in range(len(numbers)):
-            self.tile_numbers[numbers[i]] += [hexgrid.tile_id_to_coord(i +1)];
+            self.tile_numbers[numbers[i]] += [hexgrid.tile_id_to_coord(i +1)]
 
         # Dictionary of roads (from index to player index)
         self.roads = {}
@@ -77,6 +45,7 @@ class CatanBoard:
 
     def get_empty_edges_around_node(self, node):
         """
+        For the setup
         :param node: The index number of the node
         :return: Array of edges (can be empty)
         """
@@ -120,7 +89,8 @@ class CatanBoard:
         if not node_id in self.legal_nodes:
             raise ValueError("Couldn't place settlement, illegal node id.")
         # Make sure there is a road that belongs to the player around the node
-        if player_id not in [self.roads.get(e, -1) for e in get_edges_adjacent_to_node(node_id)]
+        if player_id not in [self.roads.get(e) for e in get_edges_adjacent_to_node(node_id)]:
+            raise ValueError("Couldn't place road, the player own no adjecent roads.")
 
         self.legal_nodes.remove(node_id)
         # Remove adjecent nodes (since it's illegal to build next to a settlement)
@@ -137,7 +107,7 @@ class CatanBoard:
         if self.roads.get(edge_id, -1) != -1:
             raise ValueError("Couldn't place road, another road already exist in the edge.")
         # Make sure the player have another road touching this road:
-        if player_id not in [self.roads.get(e, -1) for e in get_edges_adjacent_to_edge(edge_id)]
+        if player_id not in [self.roads.get(e) for e in get_edges_adjacent_to_edge(edge_id)]:
             raise ValueError("Couldn't place road, the player own no adjecent roads.")
         self.roads[edge_id] = player_id
         self.update_player_longest_road(player_id)

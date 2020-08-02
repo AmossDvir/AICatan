@@ -1,25 +1,5 @@
-from enum import Enum
 import operator
-from game_state import DevCardsTypes
-from game_state import HarbourTypes
-from game_state import GameState
-from game_state import Cost
-
-
-
-class Resources(Enum):
-    WOOD = 0
-    BRICK = 1
-    SHEEP = 2
-    WHEAT = 3
-    ORE = 4
-
-class BuildingType(Enum):
-    ROAD = 0
-    SETTLEMENT = 1
-    CITY = 2
-
-
+from enums import DevCardsTypes, HarborType, Cost, Resource, BuildingType
 
 class Player():
     NUM_OF_RESOURCES = 5
@@ -40,7 +20,7 @@ class Player():
         self.__cities_built = 0
         self.__roads_built = 0
         self.__victory_points = 0
-        self.__harbours = [False,False,False,False,False,False]
+        self.__harbors = [False,False,False,False,False,False]
 
         # a dictionary to help calling the functions for building:
         self.__build_func_call = {BuildingType.ROAD: self._build_road,
@@ -60,11 +40,11 @@ class Player():
     def __str__(self):
 
         title = f"Player number {self.__player_num}:\nResources:\t\t\tDev Cards:\n"
-        line1 = f"\tWood: {self.__player_resources[Resources.WOOD.value]}\t\t\t\tKnights: {self.__player_dev_cards[DevCardsTypes.KNIGHT.value]}\n"
-        line2 = f"\tBrick: {self.__player_resources[Resources.BRICK.value]}\t\t\tVictory Cards: {self.__player_dev_cards[DevCardsTypes.VICTORY_CARD.value]}\n"
-        line3 = f"\tSheep: {self.__player_resources[Resources.SHEEP.value]}\t\t\tMonopoly: {self.__player_dev_cards[DevCardsTypes.MONOPOLY.value]}\n"
-        line4 = f"\tWheat: {self.__player_resources[Resources.WHEAT.value]}\t\t\tYear of Plenty: {self.__player_dev_cards[DevCardsTypes.YEAR_OF_PLENTY.value]}\n"
-        line5 = f"\tOre: {self.__player_resources[Resources.ORE.value]}\t\t\t\tRoad Building: {self.__player_dev_cards[DevCardsTypes.ROAD_BUILDING.value]}"
+        line1 = f"\tWood: {self.__player_resources[Resource.WOOD.value]}\t\t\t\tKnights: {self.__player_dev_cards[DevCardsTypes.KNIGHT.value]}\n"
+        line2 = f"\tBrick: {self.__player_resources[Resource.BRICK.value]}\t\t\tVictory Cards: {self.__player_dev_cards[DevCardsTypes.VICTORY_CARD.value]}\n"
+        line3 = f"\tSheep: {self.__player_resources[Resource.SHEEP.value]}\t\t\tMonopoly: {self.__player_dev_cards[DevCardsTypes.MONOPOLY.value]}\n"
+        line4 = f"\tWheat: {self.__player_resources[Resource.WHEAT.value]}\t\t\tYear of Plenty: {self.__player_dev_cards[DevCardsTypes.YEAR_OF_PLENTY.value]}\n"
+        line5 = f"\tOre: {self.__player_resources[Resource.ORE.value]}\t\t\t\tRoad Building: {self.__player_dev_cards[DevCardsTypes.ROAD_BUILDING.value]}"
 
         return title + line1 + line2 + line3 + line4 + line5
 
@@ -121,9 +101,6 @@ class Player():
         # check if enough resources:
         if not all(list(map(operator.ge, self.__player_resources, Cost.ROAD.value))):
             raise ValueError("Not Enough Resources")
-
-
-
         # check if available roads:
         elif self.get_avail_roads() < 1:
             raise ValueError("No Roads Left")
@@ -211,15 +188,15 @@ class Player():
         # todo: continue writing
 
 
-    def update_harbour_ownership(self,harbour_type):
+    def update_harbor_ownership(self,harbor_type):
         """
-        updates the harbours, if the player has built a settlement on a harbour
-        :param harbour_type:
+        updates the harbors, if the player has built a settlement on a harbor
+        :param harbor_type:
         :return:
         """
-        if harbour_type.isinstance(HarbourTypes):
-            self.__harbours[harbour_type.value] = True
-        else: raise ValueError(f"{harbour_type} Is Not a Valid Harbour Type")
+        if harbor_type.isinstance(HarborType):
+            self.__harbors[harbor_type.value] = True
+        else: raise ValueError(f"{harbor_type} Is Not a Valid harbor Type")
 
     def generate_possible_trades(self):
         """
@@ -227,7 +204,7 @@ class Player():
         :return: List
         """
         trade_value = 4
-        if self.__harbours[HarbourTypes.GENERAL3.value]:
+        if self.__harbors[HarborType.ANY3.value]:
             trade_value = 3
         return self.possible_trades_helper(0, self.__player_resources, [],trade_value)
 
@@ -262,7 +239,7 @@ class Player():
 
 if __name__ == '__main__':
     pass
-    # p = Player(55)
+    p = Player(55)
     # p.add_resources([3,5, 4, 4, 3])
     # p.build(BuildingType.ROAD)
     # p.subtract_resources([0, 1, 0, 1, 0])
