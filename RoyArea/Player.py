@@ -239,43 +239,47 @@ class Player:
         if btype == Consts.PurchasableType.SETTLEMENT:
             buildable_coords = self.__settlement_nodes
         elif btype == Consts.PurchasableType.CITY:
-            self.__settlement_nodes.remove(buildable.coord())   # city replaces existing settlement
+            # self.__settlement_nodes.remove(buildable.coord())   # city replaces existing settlement
             buildable_coords = self.__city_nodes
         else:
             buildable_coords = self.__road_edges
         buildable_coords.append(buildable.coord())
 
     # agent interface #
-    def play(self, state: GameSession) -> List[Move]:
-        """:returns a list of moves to be done in this turn"""
-        return self.__agent.play(state)
+    def choose(self, moves: List[Move], state: GameSession) -> Move:
+        """new choosing interface, should be cleaner"""
+        return self.__agent.choose(moves, state)
 
-    def choose_robber_hex(self, state: GameSession) -> int:
-        return self.__agent.choose_robber_hex(state)
+    # def play(self, state: GameSession) -> List[Move]:
+    #     """:returns a list of moves to be done in this turn"""
+    #     return self.__agent.play(state)
 
-    def choose_settlement_and_road(self, state: GameSession) -> Tuple[int, int]:
-        return self.__agent.choose_settlement_and_road(state)
+    # def choose_robber_hex(self, state: GameSession) -> int:
+    #     return self.__agent.choose_robber_hex(state)
 
-    def take_card_from(self, state: GameSession, possible_players: Set[int]) -> int:
-        return self.__agent.take_card_from(state, possible_players)
+    # def choose_settlement_and_road(self, state: GameSession) -> Tuple[int, int]:
+    #     return self.__agent.choose_settlement_and_road(state)
 
-    def choose_cards_to_throw(self, state: GameSession,  num_cards: int) -> Hand:
-        assert self.resource_hand_size() >= num_cards
-        hand_to_throw = self.__agent.choose_cards_to_throw(state, num_cards)
-        assert hand_to_throw.size() == num_cards
-        return hand_to_throw
+    # def take_card_from(self, state: GameSession, possible_players: Set[int]) -> int:
+    #     return self.__agent.take_card_from(state, possible_players)
 
-    def choose_monopoly_card(self, state: GameSession) -> Consts.ResourceType:
-        resource = self.__agent.choose_monopoly_card(state)
-        assert resource != Consts.ResourceType.DESERT
-        return resource
+    # def choose_cards_to_throw(self, state: GameSession,  num_cards: int) -> Hand:
+    #     assert self.resource_hand_size() >= num_cards
+    #     hand_to_throw = self.__agent.choose_cards_to_throw(state, num_cards)
+    #     assert hand_to_throw.size() == num_cards
+    #     return hand_to_throw
 
-    def choose_road_building(self, state: GameSession, num_roads: int) -> List[int]:
-        road_coords = self.__agent.choose_road_building(state, num_roads)
-        assert len(road_coords) == num_roads
-        return road_coords
+    # def choose_monopoly_card(self, state: GameSession) -> Consts.ResourceType:
+    #     resource = self.__agent.choose_monopoly_card(state)
+    #     assert resource in Consts.YIELDING_RESOURCES
+    #     return resource
 
-    def choose_yop_resources(self, state: GameSession) -> Hand:
-        resources = self.__agent.choose_yop_resources(state)
-        assert resources.size() == Consts.YOP_NUM_RESOURCES
-        return resources
+    # def choose_road_building(self, state: GameSession, num_roads: int) -> List[int]:
+    #     road_coords = self.__agent.choose_road_building(state, num_roads)
+    #     assert len(road_coords) == num_roads
+    #     return road_coords
+
+    # def choose_yop_resources(self, state: GameSession) -> Hand:
+    #     resources = self.__agent.choose_yop_resources(state)
+    #     assert resources.size() == Consts.YOP_NUM_RESOURCES
+    #     return resources

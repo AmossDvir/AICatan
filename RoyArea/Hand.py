@@ -84,3 +84,6 @@ class Hand:
 
     def __len__(self) -> int:
         return sum(1 for _ in self)
+
+    def __eq__(self, other: Hand) -> bool:
+        return other.contains(self) and self.contains(other)

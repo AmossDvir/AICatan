@@ -56,7 +56,7 @@ class Board:
         print('adj', self.get_adj_tile_ids_to_node(coord))
         print([self.hexes()[h].resource() for h in self.get_adj_tile_ids_to_node(coord)])
         return Hand(*(self.hexes()[h].resource() for h in self.get_adj_tile_ids_to_node(coord)
-                      if self.hexes()[h].resource() not in (Consts.ResourceType.DESERT, Consts.ResourceType.ANY)))
+                      if self.hexes()[h].resource() in Consts.YIELDING_RESOURCES))
 
     def resource_distributions(self, dice_sum: int) -> Dict[int, Hand]:
         dist = {}
@@ -95,7 +95,6 @@ class Board:
             tile_coords = [location + 0x20, location - 0x10, location - 0x12]
         return [hexgrid.tile_id_from_coord(coord) - 1 for coord in tile_coords if coord in hexgrid.legal_tile_coords()]
 
-
     def _city_legal_check(self, player_id: int, location: int) -> None:     # if not :
         if not (isinstance(self.nodes().get(location), Buildable) and   # 1. something is built there
                 self.nodes().get(location).player_id() == player_id and     # 2, that thing belongs to this player
@@ -117,14 +116,7 @@ class Board:
     def build(self, buildable: Buildable) -> None:
         coords = self.nodes()
         if buildable.type() == Consts.PurchasableType.ROAD:
-            # self._road_legal_check(player_id, location)
             coords = self.edges()
-        # elif btype == Consts.PurchasableType.SETTLEMENT:
-        #     self._settlement_legal_check(player_id, location, pre_game)
-        # elif btype == Consts.PurchasableType.CITY:
-        #     self._city_legal_check(player_id, location)
-        # else:
-        #     raise ValueError(f'cannot build PurchasableType {btype}')
         coords[buildable.coord()] = buildable
 
     def info(self) -> str:
@@ -166,12 +158,3 @@ class Board:
                                \\ _____ /
 
              """
-
-
-if __name__ == '__main__':
-    b = Board()
-    print(b.info())
-    exit()
-    print(hexgrid.legal_node_coords())
-    b.build(0, Consts.PurchasableType.SETTLEMENT, 0x49)
-    print(hexgrid.legal_node_coords())

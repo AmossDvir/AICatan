@@ -42,15 +42,15 @@ class HexTile:
 
     def coord(self) -> int:
         """:returns coordinate of this hex tile, *this is not the same as hex id* (see hexgrid)"""
-        return hexgrid.tile_id_to_coord(self.__hex_id)
+        return hexgrid.tile_id_to_coord(self.__hex_id + 1)
 
     def edges(self) -> List[int]:
         """:returns list of this tile's edge coordinates"""
-        return hexgrid.edges_touching_tile(self.__hex_id)
+        return hexgrid.edges_touching_tile(self.__hex_id + 1)
 
     def nodes(self) -> List[int]:
         """:returns list of this tile's node coordinates"""
-        return hexgrid.nodes_touching_tile(self.__hex_id)
+        return hexgrid.nodes_touching_tile(self.__hex_id + 1)
 
     def token(self) -> int:
         return self.__token if self.__token is not None else ''

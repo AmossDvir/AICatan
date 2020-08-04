@@ -10,10 +10,18 @@ class ResourceType(Enum):
     SHEEP = 4
     WHEAT = 5
     DESERT = 6
-    ANY = 7  # this is used by general harbors
+    ANY = 7         # this is used by general harbors
+    UNKNOWN = 8     # used for mock playing moves with non-deterministic outcomes
 
     def __str__(self):
         return self.name
+
+
+YIELDING_RESOURCES = [ResourceType.FOREST,
+                      ResourceType.ORE,
+                      ResourceType.BRICK,
+                      ResourceType.SHEEP,
+                      ResourceType.WHEAT]
 
 
 class DevType(Enum):
@@ -22,6 +30,7 @@ class DevType(Enum):
     MONOPOLY = 3
     YEAR_OF_PLENTY = 4
     ROAD_BUILDING = 5
+    UNKNOWN = 6
 
 
 HARBOR_NODES = {

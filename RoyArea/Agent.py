@@ -47,28 +47,67 @@ class Agent:
 
 class RandomAgent(Agent):
 
+    def choose(self, moves: List[Moves.Move], state: GameSession):
+        available_move_types = set([m.get_type() for m in moves])
+        move_type = choice(list(available_move_types))
+        if state.get_player_from_agent_id(self.id()).resource_hand().size() > 10:
+            while move_type == Moves.MoveType.PASS:
+                move_type = choice(list(available_move_types))
+
+        filtered_moves = [m for m in moves if m.get_type() == move_type]
+
+        # from build moves choose uniformly from buildables (same reasoning)
+        if move_type == Moves.MoveType.BUILD:
+            available_build_types = set([m.builds() for m in filtered_moves])
+            build_type = choice(list(available_build_types))
+            filtered_moves = [m for m in filtered_moves if m.builds() == build_type]
+        elif move_type == Moves.MoveType.USE_DEV:   # same for dev cards
+            available_dev_types = set([m.uses() for m in filtered_moves])
+            dev_type = choice(list(available_dev_types))
+            filtered_moves = [m for m in filtered_moves if m.uses() == dev_type]
+
+        return choice(filtered_moves)
+
+
     def play(self, state: GameSession) -> List[Moves.Move]:
         """:returns a list of moves to be done in this turn"""
         player_id = self._player(state).get_id()
         moves = []
         moves_left = state.get_possible_moves(player_id)
-        if uniform(0,1) > 0.3:
-            return moves
+
         while moves_left:
-            if uniform(0, 1) > 0.3:
+            if uniform(0, 1) > 0.3:     # with prob. 0.7 stop generating more moves
                 return moves
 
-            build_moves = [m for m in moves_left if isinstance(m, Moves.BuildMove) and m.builds() != Consts.PurchasableType.ROAD]
-            if build_moves:
-                move_picked = choice(build_moves)
-            else:
-                move_picked = choice(moves_left)
+            # first choose uniformly from available move types.
+            # because some types have many options and happen every time probabilistically (trade)
+            available_move_types = set([m.get_type() for m in moves_left])
+            move_type = choice(list(available_move_types))
+            filtered_moves = [m for m in moves_left if m.get_type() == move_type]
 
+            # from build moves choose uniformly from buildables (same reasoning)
+            if move_type == Moves.MoveType.BUILD:
+                available_build_types = set([m.builds() for m in filtered_moves])
+                build_type = choice(list(available_build_types))
+                filtered_moves = [m for m in filtered_moves if m.builds() == build_type]
+
+            # from use devs choose uniformly
+            # TODO
+
+            # build_moves = [m for m in moves_left if isinstance(m, Moves.BuildMove) and m.builds() != Consts.PurchasableType.ROAD]
+            # if build_moves:
+            #     move_picked = choice(build_moves)
+            # else:
+            #     move_picked = choice(moves_left)
+            move_picked = choice(filtered_moves)
             moves.append(move_picked)
+            print('*************************************BEFORE APPLIED MOVE, MOVES LEFT:\n', '\n'.join(m.info() for m in moves_left))
             new_state = state.mock_apply_move(move_picked)
             del state
             state = new_state
             moves_left = state.get_possible_moves(player_id)
+            print('*************************************AFTER APPLIED MOVE, MOVES LEFT:\n', '\n'.join(m.info() for m in moves_left))
+
 
         return moves
 
@@ -93,15 +132,15 @@ class RandomAgent(Agent):
         return Hand(*sample([card for card in self._player(state).resource_hand()], num_cards))
 
     def choose_monopoly_card(self, state: GameSession) -> Consts.ResourceType:
-        card = choice(list(Consts.ResourceType))
-        while card in (Consts.ResourceType.DESERT, Consts.ResourceType.ANY):
-            card = choice(list(Consts.ResourceType))
+        card = choice(list(Consts.YIELDING_RESOURCES))
         return card
 
     def choose_road_building(self, state: GameSession, num_roads: int) -> List[int]:
-        return sample([move.at() for move in state.get_possible_moves(
+        road_moves = [move.at() for move in state.get_possible_moves(
                         self._player(state).get_id(), road_building=True)
-                        if isinstance(move, Moves.BuildMove) and move.builds() == Consts.PurchasableType.ROAD], 2)
+                        if isinstance(move, Moves.BuildMove) and move.builds() == Consts.PurchasableType.ROAD]
+        sample_size = min(Consts.ROAD_BUILDING_NUM_ROADS, len(road_moves))
+        return sample(road_moves, sample_size)
 
     def choose_yop_resources(self, state: GameSession) -> Hand:
         card1, card2 = self.choose_monopoly_card(state), self.choose_monopoly_card(state)
