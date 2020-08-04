@@ -16,7 +16,7 @@ class Agent:
     def id(self) -> int:
         return self.__id
 
-    def choose(self, moves: List[Moves.Move], state: GameSession) -> int:
+    def choose(self, moves: List[Moves.Move], state: GameSession) -> Moves.Move:
         raise NotImplemented
 
     # def play(self, state: GameSession) -> List[Moves.Move]:
@@ -147,10 +147,18 @@ class RandomAgent(Agent):
     #     return Hand(card1, card2)
 
 
-# class HumanAgent(Agent):
-#     def __init__(self, agent_id: int, name='human'):
-#         super().__init__(agent_id)
-#         self.__name = name
+class HumanAgent(Agent):
+    def __init__(self, agent_id: int, name='human'):
+        super().__init__(agent_id)
+        self.__name = name
+
+    def choose(self, moves: List[Moves.Move], state: GameSession) -> Moves.Move:
+        idx = int(input('choose move by index:\n{}\n'.format('\n'.join('{:3} - {}'.format(i, m.info()) for i, m in enumerate(moves)))))
+        return moves[idx]
+
+    def __repr__(self):
+        return self.__name
+
 #
 #     def play(self, state: GameSession) -> List[Moves.Move]:
 #         """:returns a list of moves to be done in this turn"""
