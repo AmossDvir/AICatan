@@ -661,7 +661,7 @@ class GameSession:
 
 
 if __name__ == '__main__':
-    from Agent import HumanAgent, RandomAgent
+    from Agent import RandomAgent
 
     # a1 = HumanAgent(0, 'kiki')
     # a2 = HumanAgent(1, 'kiki')
