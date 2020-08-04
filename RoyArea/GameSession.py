@@ -362,7 +362,8 @@ class GameSession:
 
                 # query player for move #
                 moves_available = self.get_possible_moves(curr_player_id)
-                dprint(f'[RUN GAME] player {curr_player_id} can play:\n', '\n'.join(m.info() for m in moves_available))
+                dprint(f'[RUN GAME] player {curr_player_id} can play:\n')
+                dprint('\n'.join(m.info() for m in moves_available) + '\n')
                 move_to_play = self.__players[curr_player_id].choose(moves_available, deepcopy(self))
                 dprint(f'[RUN GAME] player {curr_player_id} is playing: {move_to_play.info()}')
                 if any(m.get_type() == Moves.MoveType.THROW for m in moves_available):
@@ -372,8 +373,8 @@ class GameSession:
 
                 while move_to_play.get_type() != Moves.MoveType.PASS:
                     moves_available = self.get_possible_moves(curr_player_id)
-                    dprint(f'[RUN GAME] player {curr_player_id} can play:\n',
-                           '\n'.join(m.info() for m in moves_available))
+                    dprint(f'[RUN GAME] player {curr_player_id} can play:\n')
+                    dprint('\n'.join(m.info() for m in moves_available) + '\n')
                     move_to_play = self.__players[curr_player_id].choose(moves_available, deepcopy(self))
                     dprint(f'[RUN GAME] player {curr_player_id} is playing: {move_to_play.info()}')
                     if any(m.get_type() == Moves.MoveType.THROW for m in moves_available):
@@ -663,11 +664,11 @@ class GameSession:
 if __name__ == '__main__':
     from Agent import RandomAgent
 
-    a1 = HumanAgent(0, 'kiki')
-    a2 = HumanAgent(1, 'kiki')
-    a3 = HumanAgent(2, 'oriane')
-    # a1 = RandomAgent(0)
-    # a2 = RandomAgent(1)
-    # a3 = RandomAgent(2)
+    # a1 = HumanAgent(0, 'kiki')
+    # a2 = HumanAgent(1, 'kiki')
+    # a3 = HumanAgent(2, 'oriane')
+    a1 = RandomAgent(0)
+    a2 = RandomAgent(1)
+    a3 = RandomAgent(2)
     g = GameSession(a1, a2, a3)
     g.run_game()
