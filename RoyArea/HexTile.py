@@ -68,4 +68,4 @@ class HexTile:
         return colorify(self.__resource)
 
     def __repr__(self):
-        return str(self)
+        return colorify(self.__resource)

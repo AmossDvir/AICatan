@@ -2,22 +2,26 @@ from __future__ import annotations
 from typing import Set, List, Tuple
 from random import choice
 from Dice import PROBABILITIES
-from Buildables import Buildable
-from Hand import Hand
-from Moves import Move
+import Buildable
+import Hand
+import Moves
 import GameConstants as Consts
-from GameSession import *
-from Agent import *
+# from GameSession import *
+import GameSession
+import Agent
 import hexgrid
 
 
 class Player:
-    def __init__(self, player_id: int, agent: Agent):
+    ID_GEN = 0
+
+    def __init__(self, agent: Agent.Agent, name: str = None):
         self.__agent = agent
-        self.__id = player_id
-        self.__resources_hand = Hand()
-        self.__devs_hand = Hand()
-        self.__used_devs = Hand()
+        self.__id = self.__gen_id()
+        self.__name = self.__gen_name(name)
+        self.__resources_hand = Hand.Hand()
+        self.__devs_hand = Hand.Hand()
+        self.__used_devs = Hand.Hand()
         self.__settlement_nodes = []
         self.__city_nodes = []
         self.__road_edges = []
@@ -41,7 +45,7 @@ class Player:
         vp += len([dev_card for dev_card in self.__used_devs if dev_card == Consts.DevType.VP]) * Consts.VP_DEV_CARD
         return vp
 
-    def agent(self) -> Agent:
+    def agent(self) -> Agent.Agent:
         return self.__agent
 
     def remove_settlement(self, node: int) -> None:
@@ -117,10 +121,10 @@ class Player:
         """
         return self.__has_largest_army
 
-    def resource_hand(self) -> Hand:
+    def resource_hand(self) -> Hand.Hand:
         return self.__resources_hand
 
-    def dev_hand(self) -> Hand:
+    def dev_hand(self) -> Hand.Hand:
         return self.__devs_hand
 
     def num_settlements(self) -> int:
@@ -151,8 +155,6 @@ class Player:
         """
         :return: current max road length (for longest road evaluation)
         """
-        # TODO make some smart calculation over self.__road_edges to get this number,
-        #  or check / increment longest_road_len every time road is built
         return self.__calc_road_len()
 
     def army_size(self) -> int:
@@ -203,12 +205,28 @@ class Player:
         assert expected >= 0
         return expected
 
+    def __gen_name(self, name: str) -> str:
+        if name is None:
+            return f'Player{self.get_id()}'
+        return name
+
+    @staticmethod
+    def __gen_id() -> int:
+        Player.ID_GEN += 1
+        return Player.ID_GEN
 
     def info(self) -> str:
-        return f'[PLAYER] player_id = {self.get_id()}, vp = {self.vp()}, agent = {type(self.agent())}, settlements = {[hex(s) for s in self.__settlement_nodes]}, ' \
-               f'cities = {[hex(c) for c in self.__city_nodes]}, roads = {[hex(r) for r in self.__road_edges]}, ' \
-               f'longest road = {self.__has_longest_road}, largest army = {self.__has_largest_army}, ' \
-               f'resources = {self.resource_hand()}, devs = {self.__devs_hand}, devs_used = {self.__used_devs}'
+        return f'[PLAYER {self}] player_id = {self.get_id()}\n' \
+               f'[PLAYER {self}] vp = {self.vp()}\n' \
+               f'[PLAYER {self}] agent = {type(self.agent())}\n' \
+               f'[PLAYER {self}] settlements = {[hex(s) for s in self.__settlement_nodes]}\n' \
+               f'[PLAYER {self}] cities = {[hex(c) for c in self.__city_nodes]}\n' \
+               f'[PLAYER {self}] roads = {[hex(r) for r in self.__road_edges]}\n' \
+               f'[PLAYER {self}] longest road = {self.__has_longest_road}\n' \
+               f'[PLAYER {self}] largest army = {self.__has_largest_army}\n' \
+               f'[PLAYER {self}] resources = {self.resource_hand()}\n' \
+               f'[PLAYER {self}] devs = {self.__devs_hand}\n' \
+               f'[PLAYER {self}] devs_used = {self.__used_devs}\n'
 
     # modifiers #
     def set_longest_road(self, val: bool) -> None:
@@ -221,20 +239,20 @@ class Player:
         if dtype not in self.__devs_hand:
             raise ValueError(f'player {self.get_id()} cannot use dev card {dtype}, no such card in hand')
         else:
-            used = Hand(dtype)
+            used = Hand.Hand(dtype)
             self.__devs_hand.remove(used)
             self.__used_devs.insert(used)
 
-    def receive_cards(self, cards: Hand) -> None:
+    def receive_cards(self, cards: Hand.Hand) -> None:
         res_cards = cards.resources()
         dev_cards = cards.devs()
         self.__resources_hand.insert(res_cards)
         self.__devs_hand.insert(dev_cards)
 
-    def throw_cards(self, cards: Hand) -> None:
+    def throw_cards(self, cards: Hand.Hand) -> None:
         self.__resources_hand.remove(cards)
 
-    def add_buildable(self, buildable: Buildable) -> None:
+    def add_buildable(self, buildable: Buildable.Buildable) -> None:
         btype = buildable.type()
         if btype == Consts.PurchasableType.SETTLEMENT:
             buildable_coords = self.__settlement_nodes
@@ -246,40 +264,17 @@ class Player:
         buildable_coords.append(buildable.coord())
 
     # agent interface #
-    def choose(self, moves: List[Move], state: GameSession) -> Move:
+    def choose(self, moves: List[Moves.Move], state: GameSession.GameSession) -> Moves.Move:
         """new choosing interface, should be cleaner"""
-        return self.__agent.choose(moves, state)
+        return self.__agent.choose(moves, self, state)
 
-    # def play(self, state: GameSession) -> List[Move]:
-    #     """:returns a list of moves to be done in this turn"""
-    #     return self.__agent.play(state)
+    def __eq__(self, other: Player) -> bool:
+        if other is None:
+            return False
+        return self.get_id() == other.get_id()
 
-    # def choose_robber_hex(self, state: GameSession) -> int:
-    #     return self.__agent.choose_robber_hex(state)
+    def __repr__(self) -> str:
+        return self.__name
 
-    # def choose_settlement_and_road(self, state: GameSession) -> Tuple[int, int]:
-    #     return self.__agent.choose_settlement_and_road(state)
-
-    # def take_card_from(self, state: GameSession, possible_players: Set[int]) -> int:
-    #     return self.__agent.take_card_from(state, possible_players)
-
-    # def choose_cards_to_throw(self, state: GameSession,  num_cards: int) -> Hand:
-    #     assert self.resource_hand_size() >= num_cards
-    #     hand_to_throw = self.__agent.choose_cards_to_throw(state, num_cards)
-    #     assert hand_to_throw.size() == num_cards
-    #     return hand_to_throw
-
-    # def choose_monopoly_card(self, state: GameSession) -> Consts.ResourceType:
-    #     resource = self.__agent.choose_monopoly_card(state)
-    #     assert resource in Consts.YIELDING_RESOURCES
-    #     return resource
-
-    # def choose_road_building(self, state: GameSession, num_roads: int) -> List[int]:
-    #     road_coords = self.__agent.choose_road_building(state, num_roads)
-    #     assert len(road_coords) == num_roads
-    #     return road_coords
-
-    # def choose_yop_resources(self, state: GameSession) -> Hand:
-    #     resources = self.__agent.choose_yop_resources(state)
-    #     assert resources.size() == Consts.YOP_NUM_RESOURCES
-    #     return resources
+    def __hash__(self):
+        return self.get_id()

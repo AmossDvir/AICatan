@@ -1,4 +1,4 @@
-from enum import IntEnum, Enum
+from enum import Enum
 from Hand import Hand
 from typing import Union
 
@@ -52,6 +52,8 @@ MAX_CARDS_IN_HAND = 7
 MAX_SETTLEMENTS_PER_PLAYER = 5
 MAX_CITIES_PER_PLAYER = 4
 MAX_ROADS_PER_PLAYER = 15
+MAX_PLAYERS = 4
+MIN_PLAYERS = 3
 MIN_LARGEST_ARMY_SIZE = 3
 MIN_LONGEST_ROAD_SIZE = 5
 WINNING_VP = 10
