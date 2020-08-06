@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Generator, Union, List
 from itertools import combinations
+import argparse
+import pickle
 from copy import deepcopy
 import GameConstants as Consts
 import Board
@@ -10,8 +12,10 @@ import Hand
 import Moves
 import Buildable
 import hexgrid
+import GameLogger
 
 DEBUG = True
+A = 5
 
 def dprint(*args, **kwargs):
     if DEBUG:
@@ -20,7 +24,7 @@ def dprint(*args, **kwargs):
 
 class GameSession:
     # def __init__(self, agent1: Agent.Agent, agent2: Agent.Agent, agent3: Agent.Agent, agent4: Agent.Agent = None):
-    def __init__(self, *players: Player.Player):
+    def __init__(self, *players: Player.Player, log=None):
         assert Consts.MIN_PLAYERS <= len(players) <= Consts.MAX_PLAYERS
 
         # game board & dice #
@@ -42,6 +46,12 @@ class GameSession:
         self.__dev_cards_bought_this_turn = Hand.Hand()
         self.__curr_turn_idx = 0
         self.__num_turns_played = 0
+
+        # Saving a log of game sessions:
+        if log:
+            self.logger = GameLogger.GameLogger(log)
+        else:
+            self.logger = None
 
     def run_game(self) -> None:
         self.__run_pre_game()
@@ -100,6 +110,8 @@ class GameSession:
                 #     print('MOVES AVAILABLE IS BAD', moves_available)
                 #     exit()
                 self.__apply_move(move_to_play)
+                if self.logger:
+                    self.logger.write_session(deepcopy(self))
 
                 while move_to_play.get_type() != Moves.MoveType.PASS:
                     moves_available = self.get_possible_moves(curr_player)
@@ -111,6 +123,8 @@ class GameSession:
                     #     print('MOVES AVAILABLE IS BAD', moves_available)
                     #     exit()
                     self.__apply_move(move_to_play)
+                    if self.logger:
+                        self.logger.write_session(deepcopy(self))
 
             dprint(self.status_table())
             if self.__is_game_over():
@@ -685,10 +699,20 @@ class GameSession:
         # print('POSSIBLE SETTLE MOVES', moves)
         return moves
 
+def parse_args():
+    # Maybe evetually add the agents to here, ot could make testing agents easier
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-sl', '--save-log',
+        help='The name of the log file - if not specified, no log file will be generated.',
+        metavar="log_name", default=None
+        )
+    args = parser.parse_args()
+    return args
 
 if __name__ == '__main__':
     from Agent import RandomAgent
-
+    args = parse_args()
     # a1 = HumanAgent(0, 'kiki')
     # a2 = HumanAgent(1, 'ty')
     # a3 = HumanAgent(2, 'oriane')
@@ -699,5 +723,5 @@ if __name__ == '__main__':
     p1 = Player.Player(a0)
     p2 = Player.Player(a0)
     p3 = Player.Player(a0)
-    g = GameSession(p0, p1, p2, p3)
+    g = GameSession(p0, p1, p2, p3, log=args.save_log)
     g.run_game()
