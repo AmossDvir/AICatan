@@ -32,6 +32,9 @@ class DevType(Enum):
     ROAD_BUILDING = 5
     UNKNOWN = 6
 
+    def __str__(self):
+        return self.name
+
 
 HARBOR_NODES = {
     ResourceType.SHEEP: [0x5a, 0x6b],

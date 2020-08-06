@@ -45,6 +45,9 @@ class Player:
         vp += len([dev_card for dev_card in self.__used_devs if dev_card == Consts.DevType.VP]) * Consts.VP_DEV_CARD
         return vp
 
+    def used_dev_hand(self) -> Hand:
+        return self.__used_devs
+
     def agent(self) -> Agent.Agent:
         return self.__agent
 

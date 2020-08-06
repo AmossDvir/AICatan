@@ -112,7 +112,7 @@ class GameSession:
                     #     exit()
                     self.__apply_move(move_to_play)
 
-            dprint(self.board())
+            dprint(self.status_table())
             if self.__is_game_over():
                 dprint(f'\n\n\nGAME OVER - player {curr_player} won!!!')
                 break
@@ -123,7 +123,7 @@ class GameSession:
     def curr_turn(self) -> int:
         return self.__curr_turn_idx
 
-    def players(self) -> List[Player.Player]:
+    def players(self) -> List[Player]:
         return self.__turn_order
 
     def board(self) -> Board.Board:
@@ -265,6 +265,72 @@ class GameSession:
                            d.name, self.__dev_deck.cards_of_type(d).size(), amount)
                                  for d, amount in Consts.DEV_COUNTS.items()))
         return '\n'.join(ret_val)
+
+    def status_table(self) -> str:
+        from collections import OrderedDict
+        table = []
+        # table = OrderedDict()
+        # table['Player'] = [player for player in self.players()]
+        table.append(['Player'] + [player for player in self.players()])
+        # table['VP'] = [player.vp() for player in self.players()]
+        table.append(['VP'] + [player.vp() for player in self.players()])
+        # table['Longest Road'] = [player.has_longest_road() for player in self.players()]
+        table.append(['Longest Road'] + ['X' if player.has_longest_road() else '' for player in self.players()])
+        # table['Largest Army'] = [player.has_largest_army() for player in self.players()]
+        table.append(['Largest Army'] + ['X' if player.has_largest_army() else '' for player in self.players()])
+        # table['Cities'] = [[hex(node) for node in player.city_nodes()] for player in self.players()]
+        max_cities = max(1, max(p.num_cities() for p in self.players()))
+        for city_idx in range(max_cities):
+            table.append(
+                (['Cities'] if city_idx  == 0 else ['']) + [(hex(player.city_nodes()[city_idx]) if city_idx < len(player.city_nodes())
+                                        else '') for player in self.players()])
+
+        max_settles = max(1, max(p.num_settlements() for p in self.players()))
+        for settle_idx in range(max_settles):
+            table.append(
+                (['Settlements'] if settle_idx  == 0 else ['']) + [(hex(player.settlement_nodes()[settle_idx]) if settle_idx < len(player.settlement_nodes())
+                                    else '') for player in self.players()])
+
+        max_roads = max(1, max(p.num_roads() for p in self.players()))
+        for road_idx in range(max_roads):
+            table.append(
+                (['Roads'] if road_idx  == 0 else ['']) + [(hex(player.road_edges()[road_idx]) if road_idx < len(player.road_edges())
+                              else '') for player in self.players()])
+
+        max_res = max(1, max(p.resource_hand_size() for p in self.players()))
+        for res_idx in range(max_res):
+            table.append(
+                (['Resources'] if res_idx == 0 else ['']) + [([card for card in player.resource_hand()][res_idx] if res_idx < player.resource_hand_size()
+                                  else '') for player in self.players()])
+
+        max_res = max(1, max(p.dev_hand_size() for p in self.players()))
+        for res_idx in range(max_res):
+            table.append(
+                (['Devs'] if res_idx == 0 else ['']) + [
+                    ([card for card in player.dev_hand()][res_idx] if res_idx < player.dev_hand_size()
+                     else '') for player in self.players()])
+
+        max_res = max(1, max(p.used_dev_hand().size() for p in self.players()))
+        for res_idx in range(max_res):
+            table.append(
+                (['Devs Used'] if res_idx == 0 else ['']) + [
+                    ([card for card in player.used_dev_hand()][res_idx] if res_idx < player.used_dev_hand().size()
+                     else '') for player in self.players()])
+        max_widths = [0 for _ in table[0]]
+        for line in table:
+            for i in range(len(line)):
+                max_widths[i] = max(len(str(line[i])), max_widths[i])
+
+        sep = '|' + '-' * (sum(max_widths) + 3 * (len(max_widths) - 1) + 2) + '|'
+        string_table = '\n' + sep + '\n| {:{}} |'.format('Status Table', len(sep) - 4) + '\n'
+        for line in table:
+            if line[0]:
+                string_table += sep + '\n'
+            string_table += '| ' + ' | '.join('{:{}}'.format(str(e), max_widths[i]) for i, e in enumerate(line)) + ' |\n'
+
+        string_table += sep + '\n'
+
+        return string_table
 
     def __init_turn_order(self, *players: Player.Player) -> List[Player.Player]:
         dprint('[CATAN] Catan game started, players rolling dice to establish turn order')
