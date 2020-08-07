@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Generator, Union, List
 from itertools import combinations
+import argparse
 from copy import deepcopy
 import GameConstants as Consts
 import Board
@@ -10,6 +11,7 @@ import Hand
 import Moves
 import Buildable
 import hexgrid
+import GameLogger
 
 DEBUG = True
 
@@ -20,7 +22,7 @@ def dprint(*args, **kwargs):
 
 class GameSession:
     # def __init__(self, agent1: Agent.Agent, agent2: Agent.Agent, agent3: Agent.Agent, agent4: Agent.Agent = None):
-    def __init__(self, *players: Player.Player):
+    def __init__(self, *players: Player.Player, log=None):
         assert Consts.MIN_PLAYERS <= len(players) <= Consts.MAX_PLAYERS
 
         # game board & dice #
@@ -42,6 +44,12 @@ class GameSession:
         self.__dev_cards_bought_this_turn = Hand.Hand()
         self.__curr_turn_idx = 0
         self.__num_turns_played = 0
+
+        # Saving a log of game sessions:
+        if log:
+            self.logger = GameLogger.GameLogger(log)
+        else:
+            self.logger = None
 
     def run_game(self) -> None:
         self.__run_pre_game()
@@ -97,6 +105,8 @@ class GameSession:
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
                 dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
                 self.__apply_move(move_to_play)
+                if self.logger:
+                    self.logger.write_session(deepcopy(self))
 
                 while move_to_play.get_type() != Moves.MoveType.PASS:
                     moves_available = self.get_possible_moves(curr_player)
@@ -105,6 +115,8 @@ class GameSession:
                     move_to_play = curr_player.choose(moves_available, deepcopy(self))
                     dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
                     self.__apply_move(move_to_play)
+                    if self.logger:
+                        self.logger.write_session(deepcopy(self))
 
             dprint(self.board())
             dprint(self.status_table())
@@ -677,19 +689,31 @@ class GameSession:
         # print('POSSIBLE SETTLE MOVES', moves)
         return moves
 
+def parse_args():
+    # Maybe evetually add the agents to here, ot could make testing agents easier
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-sl', '--save-log',
+        help='The name of the log file - if not specified, no log file will be generated.',
+        metavar="log_name", default=None
+        )
+    args = parser.parse_args()
+    return args
 
 if __name__ == '__main__':
-    from Agent import RandomAgent
-
+    from Agent import RandomAgent, OneMoveHeuristicAgent
+    from Heuristics import vp_heuristic
+    args = parse_args()
     # a1 = HumanAgent(0, 'kiki')
     # a2 = HumanAgent(1, 'ty')
     # a3 = HumanAgent(2, 'oriane')
     a0 = RandomAgent(0)
+    a1 = OneMoveHeuristicAgent(1, heuristic=vp_heuristic)
     # p1 = RandomAgent(1)
     # p2 = RandomAgent(2)
     p0 = Player.Player(a0)
     p1 = Player.Player(a0)
     p2 = Player.Player(a0)
-    p3 = Player.Player(a0)
-    g = GameSession(p0, p1, p2, p3)
+    p3 = Player.Player(a1)
+    g = GameSession(p0, p1, p2, p3, log=args.save_log)
     g.run_game()
