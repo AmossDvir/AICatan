@@ -4,6 +4,7 @@ import Moves as Moves
 import Player as Player
 from typing import List
 from random import choice
+from Heuristics import *
 
 
 class Agent:
@@ -49,9 +50,27 @@ class HumanAgent(Agent):
         super().__init__(agent_id)
         self.__name = name
 
-    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession.GameSession) -> Moves.Move:
         idx = int(input('Player {}, choose move by index:\n{}\n'.format(player, '\n'.join('{:3} - {}'.format(i, m.info()) for i, m in enumerate(moves)))))
         return moves[idx]
 
     def __repr__(self):
         return self.__name
+
+
+class OneMoveHeuristicAgent(Agent):
+    # Open the tree only one move forward and apply the given heuristic on it
+    def __init__(self, agent_id: int, heuristic=vp_heuristic):
+        super().__init__(agent_id)
+        self.__heur_func = heuristic
+
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession.GameSession) -> Moves.Move:
+        # print(f"\n\nDEBUG:\n{[move.info() for move in moves]}\n\n")
+        move_values = []
+        for move in moves:
+            new_state = state.simulate_move(move)
+            # This is not good enough - simulate move will only choose one random outcome
+            # when several are possible (like rolling the dice or buying dev card)
+            move_values.append(self.__heur_func(new_state, move.player()))
+        argmax = move_values.index(max(move_values))
+        return moves[argmax]

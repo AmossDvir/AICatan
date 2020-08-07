@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Generator, Union, List
 from itertools import combinations
 import argparse
-import pickle
 from copy import deepcopy
 import GameConstants as Consts
 import Board
@@ -15,7 +14,6 @@ import hexgrid
 import GameLogger
 
 DEBUG = True
-A = 5
 
 def dprint(*args, **kwargs):
     if DEBUG:
@@ -711,17 +709,19 @@ def parse_args():
     return args
 
 if __name__ == '__main__':
-    from Agent import RandomAgent
+    from Agent import RandomAgent, OneMoveHeuristicAgent
+    from Heuristics import vp_heuristic
     args = parse_args()
     # a1 = HumanAgent(0, 'kiki')
     # a2 = HumanAgent(1, 'ty')
     # a3 = HumanAgent(2, 'oriane')
     a0 = RandomAgent(0)
+    a1 = OneMoveHeuristicAgent(1, heuristic=vp_heuristic)
     # p1 = RandomAgent(1)
     # p2 = RandomAgent(2)
     p0 = Player.Player(a0)
     p1 = Player.Player(a0)
     p2 = Player.Player(a0)
-    p3 = Player.Player(a0)
+    p3 = Player.Player(a1)
     g = GameSession(p0, p1, p2, p3, log=args.save_log)
     g.run_game()
