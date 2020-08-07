@@ -96,9 +96,6 @@ class GameSession:
                 dprint('\n'.join(m.info() for m in moves_available) + '\n')
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
                 dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
-                # if any(m.get_type() == Moves.MoveType.THROW for m in moves_available):
-                #     print('MOVES AVAILABLE IS BAD', moves_available)
-                #     exit()
                 self.__apply_move(move_to_play)
 
                 while move_to_play.get_type() != Moves.MoveType.PASS:
@@ -107,11 +104,9 @@ class GameSession:
                     dprint('\n'.join(m.info() for m in moves_available) + '\n')
                     move_to_play = curr_player.choose(moves_available, deepcopy(self))
                     dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
-                    # if any(m.get_type() == Moves.MoveType.THROW for m in moves_available):
-                    #     print('MOVES AVAILABLE IS BAD', moves_available)
-                    #     exit()
                     self.__apply_move(move_to_play)
 
+            dprint(self.board())
             dprint(self.status_table())
             if self.__is_game_over():
                 dprint(f'\n\n\nGAME OVER - player {curr_player} won!!!')
@@ -138,12 +133,12 @@ class GameSession:
         return max(p.army_size() for p in self.players())
 
     def longest_road_player(self) -> Union[Player.Player, None]:
-        player = max(self.players(), key=lambda x: x.longest_road_length())
+        player = max(self.players(), key=lambda x: self.board().road_len(x))
         if self.longest_road_length() >= Consts.MIN_LONGEST_ROAD_SIZE:
             return player
 
     def longest_road_length(self) -> int:
-        return max(p.longest_road_length() for p in self.players())
+        return max(self.board().road_len(p) for p in self.players())
 
     def get_possible_moves(self, player: Player.Player) -> List[Moves.Move]:
         moves = []
@@ -267,18 +262,11 @@ class GameSession:
         return '\n'.join(ret_val)
 
     def status_table(self) -> str:
-        from collections import OrderedDict
         table = []
-        # table = OrderedDict()
-        # table['Player'] = [player for player in self.players()]
         table.append(['Player'] + [player for player in self.players()])
-        # table['VP'] = [player.vp() for player in self.players()]
         table.append(['VP'] + [player.vp() for player in self.players()])
-        # table['Longest Road'] = [player.has_longest_road() for player in self.players()]
         table.append(['Longest Road'] + ['X' if player.has_longest_road() else '' for player in self.players()])
-        # table['Largest Army'] = [player.has_largest_army() for player in self.players()]
         table.append(['Largest Army'] + ['X' if player.has_largest_army() else '' for player in self.players()])
-        # table['Cities'] = [[hex(node) for node in player.city_nodes()] for player in self.players()]
         max_cities = max(1, max(p.num_cities() for p in self.players()))
         for city_idx in range(max_cities):
             table.append(
@@ -331,6 +319,10 @@ class GameSession:
         string_table += sep + '\n'
 
         return string_table
+
+    def __transaction(self, hand_from: Hand, hand_to: Hand, cards: Hand) -> None:
+        removed = hand_from.remove_as_much(cards)
+        hand_to.insert(removed)
 
     def __init_turn_order(self, *players: Player.Player) -> List[Player.Player]:
         dprint('[CATAN] Catan game started, players rolling dice to establish turn order')

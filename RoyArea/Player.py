@@ -54,40 +54,6 @@ class Player:
     def remove_settlement(self, node: int) -> None:
         self.settlement_nodes().remove(node)
 
-    def __calc_road_len(self) -> int:
-        graph = {}
-        for edge in self.__road_edges:
-            node1, node2 = hexgrid.nodes_touching_edge(edge)
-            if node1 not in graph:
-                graph[node1] = set()
-            if node2 not in graph:
-                graph[node2] = set()
-            graph[node1].add(node2)
-            graph[node2].add(node1)
-
-        max_len = 0
-        for start in graph:
-            curr_len = 0
-            max_curr_len = 0
-            visited = set()
-            stack = [start]
-            while stack:
-                curr = stack.pop()
-                curr_len += 1
-                visited.add(curr)
-                added = False
-                for neighbor in graph[curr]:
-                    if neighbor not in visited:
-                        stack.append(neighbor)
-                        added = True
-                if not added:
-                    if max_curr_len < curr_len:
-                        max_curr_len = curr_len
-                    curr_len -= 1
-            if max_len < max_curr_len:
-                max_len = max_curr_len
-        return max_len - 1
-
     def harbor_resources(self) -> List[Consts.ResourceType]:
         resources = []
         yielding_nodes = self.settlement_nodes() + self.city_nodes()
@@ -153,12 +119,6 @@ class Player:
         num_roads = len(self.__road_edges)
         assert 0 <= num_roads <= Consts.MAX_ROADS_PER_PLAYER
         return num_roads
-
-    def longest_road_length(self) -> int:
-        """
-        :return: current max road length (for longest road evaluation)
-        """
-        return self.__calc_road_len()
 
     def army_size(self) -> int:
         """

@@ -18,8 +18,9 @@ class Board:
         'END': '\033[0m'
     }
 
-    def __init__(self):
+    def __init__(self, *players: Player):
         self.__init_hexes()
+        self.__players = players
         self.__nodes = dict()
         self.__edges = dict()
         self.__player_colors = list(Board.COLORS.values())
@@ -128,6 +129,42 @@ class Board:
         for n, buildable in self.edges().items():
             ret_val.append(buildable.info())
         return '\n'.join(ret_val)
+
+    def road_len(self, player: Player) -> int:
+        graph = {}
+        for edge in player.road_edges():
+            node1, node2 = hexgrid.nodes_touching_edge(edge)
+            if node1 not in graph:
+                graph[node1] = set()
+            if node2 not in graph:
+                graph[node2] = set()
+            graph[node1].add(node2)
+            graph[node2].add(node1)
+
+        max_len = 0
+        for start in graph:
+            curr_len = 0
+            max_curr_len = 0
+            visited = set()
+            stack = [start]
+            while stack:
+                curr = stack.pop()
+                curr_len += 1
+                visited.add(curr)
+                added = False
+                for neighbor in graph[curr]:
+                    if self.nodes().get(neighbor) is not None and self.nodes().get(neighbor).player() != player:    # someone built here, streak ends
+                        continue
+                    if neighbor not in visited:
+                        stack.append(neighbor)
+                        added = True
+                if not added:
+                    if max_curr_len < curr_len:
+                        max_curr_len = curr_len
+                    curr_len -= 1
+            if max_len < max_curr_len:
+                max_len = max_curr_len
+        return max_len - 1
 
     def __str__(self) -> str:
         def player_color(player):
