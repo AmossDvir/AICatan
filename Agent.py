@@ -12,6 +12,7 @@ class AgentType(Enum):
     RANDOM = 0
     HUMAN = 1
     ONE_MOVE = 2
+    PROBABILITY = 3
 
     def __str__(self):
         return self.name
@@ -88,8 +89,8 @@ class OneMoveHeuristicAgent(Agent):
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         # print(f"\n\nDEBUG:\n{[move.info() for move in moves]}\n\n")
         move_values = []
-        print('ONE MOVE AGENT MOVES AVAILABLE')
-        print(*(m.info() for m in moves), sep='\n')
+        # print('ONE MOVE AGENT MOVES AVAILABLE')
+        # print(*(m.info() for m in moves), sep='\n')
         for move in moves:
             new_state = state.simulate_move(move)
             # This is not good enough - simulate move will only choose one random outcome
@@ -98,10 +99,30 @@ class OneMoveHeuristicAgent(Agent):
         max_val = max(move_values)
         argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
         moves = [moves[i] for i in argmax_vals_indices]
-        print('ARGMAX MOVES')
-        print(*(m.info() for m in moves), sep='\n')
+        # print('ARGMAX MOVES')
+        # print(*(m.info() for m in moves), sep='\n')
         move = RandomAgent().choose(moves, player, state)
-        print('RETURNED MOVE')
-        print(move.info())
+        # print('RETURNED MOVE')
+        # print(move.info())
         return move
         # return moves[argmax_idx]
+
+
+class ProbabilityAgent(Agent):
+    def __init__(self):
+        super().__init__(AgentType.PROBABILITY)
+
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+        move_vals = []
+        for move in moves:
+            new_state = state.simulate_move(move)
+            for p in new_state.players():
+                if p.get_id() == player.get_id():
+                    move_vals.append(state.board()._probability_score(p) + state.board()._expectation_score(p))
+
+        max_val = max(move_vals)
+        argmax_vals_indices = [i for i, val in enumerate(move_vals) if val == max_val]
+        moves = [moves[i] for i in argmax_vals_indices]
+        move = RandomAgent().choose(moves, player, state)
+
+        return move

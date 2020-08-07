@@ -3,7 +3,7 @@ from typing import List
 from random import sample
 import Agent
 import Player
-from Agent import RandomAgent, OneMoveHeuristicAgent, HumanAgent
+from Agent import RandomAgent, OneMoveHeuristicAgent, HumanAgent, ProbabilityAgent
 from Heuristics import vp_heuristic
 import argparse
 
@@ -11,10 +11,12 @@ DEFAULT_NUM_PLAYERS = 4
 RANDOM_AGENT = 'random'
 ONE_MOVE_AGENT = 'onemove'
 HUMAN_AGENT = 'human'
+PROBABILITY_AGENT = 'prob'
 AGENTS = {
     RANDOM_AGENT: RandomAgent(),
     ONE_MOVE_AGENT: OneMoveHeuristicAgent(),
-    HUMAN_AGENT: HumanAgent()
+    HUMAN_AGENT: HumanAgent(),
+    PROBABILITY_AGENT: ProbabilityAgent()
 }
 DEFAULT_AGENTS = [RANDOM_AGENT]
 PLAYER_NAMES = ['Roy', 'Boaz', 'Oriane', 'Amoss']
@@ -31,7 +33,7 @@ def get_args() -> argparse.Namespace:
         '-agents',
         metavar="AGENT",
         nargs='+',
-        choices=['random', 'onemove', 'human'],
+        choices=list(AGENTS.keys()),
         default=DEFAULT_AGENTS,
         help='Agents to use in the game (if # agents does not match # players, last agent will be re-used as necessary)'
     )

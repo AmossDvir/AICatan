@@ -5,6 +5,7 @@ from Dice import PROBABILITIES
 import Buildable
 import Hand
 import Moves
+import Board
 import GameConstants as Consts
 # from GameSession import *
 import GameSession
@@ -137,36 +138,6 @@ class Player:
         :return: number of development cards player is holding
         """
         return len(self.__devs_hand)
-
-    def _probability_score(self) -> float:
-        """
-        :return: player's probability of getting any resource/s in a given turn, based on settlements / cities
-        """
-        rolls = set()
-        for settlement_loc in self.__settlement_nodes:
-            for hex_tile in settlement_loc.adj_hexes():
-                rolls.add(hex_tile.roll())
-        for city_loc in self.__city_nodes:
-            for hex_tile in city_loc.adj_hexes():
-                rolls.add(hex_tile.roll())
-        prob = sum(PROBABILITIES.get(roll, 0) for roll in rolls)
-        assert 0 <= prob <= 1
-        return prob
-
-    def _expectation_score(self) -> float:
-        """
-        :return: player's expected resource gain in a given turn, based on settlements / cities
-        """
-        rolls_amounts = []
-        for settlement_loc in self.__settlement_nodes:
-            for hex_tile in settlement_loc.adj_hexes():
-                rolls_amounts.append((hex_tile.roll(), 1))
-        for city_loc in self.__city_nodes:
-            for hex_tile in city_loc.adj_hexes():
-                rolls_amounts.append((hex_tile.roll(), 2))
-        expected = sum(PROBABILITIES.get(roll, 0) * num_resources for roll, num_resources in rolls_amounts)
-        assert expected >= 0
-        return expected
 
     def __gen_name(self, name: str) -> str:
         if name is None:

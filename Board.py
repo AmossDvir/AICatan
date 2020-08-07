@@ -7,6 +7,7 @@ import HexTile
 import Player
 import Hand
 import Buildable
+from Dice import PROBABILITIES
 
 
 class Board:
@@ -220,6 +221,36 @@ class Board:
         #     if max_len < max_curr_len:
         #         max_len = max_curr_len
         # return max_len
+    def _probability_score(self, player: Player) -> float:
+        """
+        :return: player's probability of getting any resource/s in a given turn, based on settlements / cities
+        """
+        rolls = set()
+        for settlement_loc in player.settlement_nodes():
+            for hex_tile in self.get_adj_tile_ids_to_node(settlement_loc):
+                rolls.add(self.hexes()[hex_tile].token())
+        for city_loc in player.city_nodes():
+            for hex_tile in self.get_adj_tile_ids_to_node(city_loc):
+                rolls.add(self.hexes()[hex_tile].token())
+        prob = sum(PROBABILITIES.get(roll, 0) for roll in rolls)
+        assert 0 <= prob <= 1
+        return prob
+
+
+    def _expectation_score(self, player: Player) -> float:
+        """
+        :return: player's expected resource gain in a given turn, based on settlements / cities
+        """
+        rolls_amounts = []
+        for settlement_loc in player.settlement_nodes():
+            for hex_tile in self.get_adj_tile_ids_to_node(settlement_loc):
+                rolls_amounts.append((self.hexes()[hex_tile].token(), 1))
+        for city_loc in player.city_nodes():
+            for hex_tile in self.get_adj_tile_ids_to_node(city_loc):
+                rolls_amounts.append((self.hexes()[hex_tile].token(), 2))
+        expected = sum(PROBABILITIES.get(roll, 0) * num_resources for roll, num_resources in rolls_amounts)
+        assert expected >= 0
+        return expected
 
     def __str__(self) -> str:
         def player_color(player):
