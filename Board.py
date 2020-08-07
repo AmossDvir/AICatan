@@ -130,6 +130,53 @@ class Board:
             ret_val.append(buildable.info())
         return '\n'.join(ret_val)
 
+    # def __dfs_roads_recursive(self, player, graph, stack, visited, path):
+    #     max_path = len(path)
+    #     while stack:
+    #         curr = stack.pop()
+    #         # print('stack popped', curr)
+    #         visited.add(curr)
+    #
+    #         for neighbor in graph[curr]:
+    #             if neighbor in self.nodes() and self.nodes().get(neighbor).player() != player:  # someone built here, streak ends
+    #                 # print('neighbor', neighbor, 'in built opp')
+    #                 continue
+    #             if neighbor not in visited:
+    #                 stack.append(neighbor)
+    #                 path_len = self.__dfs_roads_recursive(player, graph, stack, visited, path + [neighbor])
+    #                 if path_len > max_path:
+    #                     max_path = path_len
+    #     return max_path
+
+    def dfs(self, player, last, visited, graph, node, path, max_len):
+        if node not in visited:
+            # print('curr node', node)
+            # print('curr path', path)
+            if node in self.nodes() and self.nodes().get(node).player().get_id() != player.get_id():
+                # print('node has opp')
+                return
+            visited.add(node)
+            # print('visited', visited)
+            for neighbour in graph[node]:
+                # print('neighbor', neighbour)
+                if neighbour != last:
+                    max_len[0] = max(max_len[0], len(path) + 1)
+                else:
+                    continue
+                # print('max', max_len[0])
+                self.dfs(player, node, visited, graph, neighbour, path + [neighbour], max_len)
+
+    def __calc_road_len(self, player, graph):
+        max_len = 0
+        for start in graph:
+            visited = set()
+            path = []
+            start_len = [0]
+            self.dfs(player, None, visited, graph, start, path, start_len)
+            if start_len[0] > max_len:
+                max_len = start_len[0]
+        return max_len
+
     def road_len(self, player: Player) -> int:
         graph = {}
         for edge in player.road_edges():
@@ -140,31 +187,39 @@ class Board:
                 graph[node2] = set()
             graph[node1].add(node2)
             graph[node2].add(node1)
+        # print(player)
+        # for n, vals in graph.items():
+        #     print(hex(n), [hex(v) for v in vals])
+        # print('NODES')
+        # for n, vals in self.nodes().items():
+        #     print(hex(n), vals.player())
 
-        max_len = 0
-        for start in graph:
-            curr_len = 0
-            max_curr_len = 0
-            visited = set()
-            stack = [start]
-            while stack:
-                curr = stack.pop()
-                curr_len += 1
-                visited.add(curr)
-                added = False
-                for neighbor in graph[curr]:
-                    if self.nodes().get(neighbor) is not None and self.nodes().get(neighbor).player() != player:    # someone built here, streak ends
-                        continue
-                    if neighbor not in visited:
-                        stack.append(neighbor)
-                        added = True
-                if not added:
-                    if max_curr_len < curr_len:
-                        max_curr_len = curr_len
-                    curr_len -= 1
-            if max_len < max_curr_len:
-                max_len = max_curr_len
-        return max_len - 1
+        return self.__calc_road_len(player, graph)
+
+        # max_len = 0
+        # for start in graph:
+        #     curr_len = 0
+        #     max_curr_len = 0
+        #     visited = set()
+        #     stack = [start]
+        #     while stack:
+        #         curr = stack.pop()
+        #         curr_len += 1
+        #         visited.add(curr)
+        #         added = False
+        #         for neighbor in graph[curr]:
+        #             if self.nodes().get(neighbor) is not None and self.nodes().get(neighbor).player() != player:    # someone built here, streak ends
+        #                 continue
+        #             if neighbor not in visited:
+        #                 stack.append(neighbor)
+        #                 added = True
+        #         if not added:
+        #             curr_len -= 1
+        #             if max_curr_len < curr_len:
+        #                 max_curr_len = curr_len
+        #     if max_len < max_curr_len:
+        #         max_len = max_curr_len
+        # return max_len
 
     def __str__(self) -> str:
         def player_color(player):

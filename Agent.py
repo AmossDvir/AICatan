@@ -1,5 +1,6 @@
 import GameSession as GameSession
 import GameConstants as Consts
+from enum import Enum
 import Moves as Moves
 import Player as Player
 from typing import List
@@ -7,21 +8,41 @@ from random import choice
 from Heuristics import *
 
 
-class Agent:
+class AgentType(Enum):
+    RANDOM = 0
+    HUMAN = 1
+    ONE_MOVE = 2
 
-    def __init__(self, agent_id: int):
-        self.__id = agent_id
+    def __str__(self):
+        return self.name
+
+
+class Agent:
+    ID_GEN = 0
+
+    def __init__(self, agent_type: AgentType):
+        Agent.ID_GEN += 1
+        self.__id = Agent.ID_GEN
+        self.__type = agent_type
+
+    def type(self) -> AgentType:
+        return self.__type
 
     def id(self) -> int:
         return self.__id
 
-    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession.GameSession) -> Moves.Move:
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         raise NotImplemented
+
+    def __str__(self):
+        return str(self.type())
 
 
 class RandomAgent(Agent):
+    def __init__(self):
+        super().__init__(AgentType.RANDOM)
 
-    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession.GameSession):
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession):
         available_move_types = set([m.get_type() for m in moves])
         move_type = choice(list(available_move_types))
 
@@ -46,11 +67,11 @@ class RandomAgent(Agent):
 
 
 class HumanAgent(Agent):
-    def __init__(self, agent_id: int, name='human'):
-        super().__init__(agent_id)
+    def __init__(self, name='human'):
+        super().__init__(AgentType.HUMAN)
         self.__name = name
 
-    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession.GameSession) -> Moves.Move:
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         idx = int(input('Player {}, choose move by index:\n{}\n'.format(player, '\n'.join('{:3} - {}'.format(i, m.info()) for i, m in enumerate(moves)))))
         return moves[idx]
 
@@ -60,11 +81,11 @@ class HumanAgent(Agent):
 
 class OneMoveHeuristicAgent(Agent):
     # Open the tree only one move forward and apply the given heuristic on it
-    def __init__(self, agent_id: int, heuristic=vp_heuristic):
-        super().__init__(agent_id)
+    def __init__(self, heuristic=vp_heuristic):
+        super().__init__(AgentType.ONE_MOVE)
         self.__heur_func = heuristic
 
-    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession.GameSession) -> Moves.Move:
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         # print(f"\n\nDEBUG:\n{[move.info() for move in moves]}\n\n")
         move_values = []
         for move in moves:

@@ -21,6 +21,9 @@ class Move:
         self.__player = player
         self.__type = mtype
 
+    def set_player(self, player: Player.Player) -> None:
+        self.__player = player
+
     def player(self) -> Player.Player:
         """:returns the id of the player making the move"""
         return self.__player
@@ -106,10 +109,15 @@ class UseMonopolyDevMove(UseDevMove):
 
 
 class UseKnightDevMove(UseDevMove):
-    def __init__(self, player: Player.Player, hex_id: int, opp: Union[Player.Player, None]):
+    def __init__(self, player: Player.Player, hex_id: int, opp: Union[Player.Player, None],
+                 robber_activated: bool = False):
         super().__init__(player, Consts.DevType.KNIGHT)
         self.__hex_id = hex_id
         self.__opp = opp
+        self.__robber = robber_activated
+
+    def robber_activated(self) -> bool:
+        return self.__robber
 
     def hex_id(self) -> int:
         return self.__hex_id
@@ -132,10 +140,14 @@ class ThrowMove(Move):
 
 
 class BuildMove(Move):
-    def __init__(self, player: Player.Player, btype: Consts.PurchasableType, location: int):
+    def __init__(self, player: Player.Player, btype: Consts.PurchasableType, location: int, pre_game: bool = False):
         super().__init__(player, MoveType.BUILD)
         self.__to_build = btype
         self.__loc = location
+        self.__pre_game = pre_game
+
+    def is_pre_game(self) -> bool:
+        return self.__pre_game
 
     def builds(self) -> Consts.PurchasableType:
         """:returns the building type as a PurchasableType enum"""

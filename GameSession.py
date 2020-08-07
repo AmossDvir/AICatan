@@ -22,7 +22,7 @@ def dprint(*args, **kwargs):
 
 class GameSession:
     # def __init__(self, agent1: Agent.Agent, agent2: Agent.Agent, agent3: Agent.Agent, agent4: Agent.Agent = None):
-    def __init__(self, *players: Player.Player, log=None):
+    def __init__(self, log: str = None, *players: Player.Player):
         assert Consts.MIN_PLAYERS <= len(players) <= Consts.MAX_PLAYERS
 
         # game board & dice #
@@ -46,10 +46,8 @@ class GameSession:
         self.__num_turns_played = 0
 
         # Saving a log of game sessions:
-        if log:
-            self.logger = GameLogger.GameLogger(log)
-        else:
-            self.logger = None
+        self.__logger = GameLogger.GameLogger(log) if log is not None else None
+
 
     def run_game(self) -> None:
         self.__run_pre_game()
@@ -73,13 +71,14 @@ class GameSession:
                 for player in self.players():
                     player_hand_size = player.resource_hand_size()
                     if player_hand_size > Consts.MAX_CARDS_IN_HAND:
-                        throw_move = player.choose(self.__get_possible_throw_moves(player, player_hand_size // 2),
-                                                   deepcopy(self))
-                        cards_thrown = throw_move.throws()
-                        dprint(f'[RUN GAME] player {player} had too many cards ({player_hand_size}), '
-                               f'he threw {cards_thrown}')
-                        player.throw_cards(cards_thrown)
-                        self.__res_deck.insert(cards_thrown)
+                        for _ in range(player_hand_size // 2):
+                            throw_move = player.choose(self.__get_possible_throw_moves(player, 1),
+                                                       deepcopy(self))
+                            cards_thrown = throw_move.throws()
+                            dprint(f'[RUN GAME] player {player} had too many cards ({player_hand_size}), '
+                                   f'he threw {cards_thrown}')
+                            player.throw_cards(cards_thrown)
+                            self.__res_deck.insert(cards_thrown)
 
                 # move robber
                 knight_move = curr_player.choose(
@@ -105,8 +104,8 @@ class GameSession:
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
                 dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
                 self.__apply_move(move_to_play)
-                if self.logger:
-                    self.logger.write_session(deepcopy(self))
+                if self.__logger:
+                    self.__logger.write_session(deepcopy(self))
 
                 while move_to_play.get_type() != Moves.MoveType.PASS:
                     moves_available = self.get_possible_moves(curr_player)
@@ -115,8 +114,8 @@ class GameSession:
                     move_to_play = curr_player.choose(moves_available, deepcopy(self))
                     dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
                     self.__apply_move(move_to_play)
-                    if self.logger:
-                        self.logger.write_session(deepcopy(self))
+                    if self.__logger:
+                        self.__logger.write_session(deepcopy(self))
 
             dprint(self.board())
             dprint(self.status_table())
@@ -247,8 +246,16 @@ class GameSession:
 
     def simulate_move(self, move: Moves.Move) -> GameSession:
         state = deepcopy(self)
-        print('***************************************************APPLYING MOCK MOVE', move.info(), 'TO STATE ', state)
-        state.__apply_move(move, printout=True, mock=True)
+        # print('***************************************************APPLYING MOCK MOVE', move.info(), 'TO STATE ', state)
+        for p in state.players():
+            if p.get_id() == move.player().get_id():
+                new_player_obj = p
+                break
+        else:
+            print('ERROR didnt find new player obj in deepcopy')
+        new_move = deepcopy(move)
+        new_move.set_player(new_player_obj)
+        state.__apply_move(new_move, printout=False, mock=True)
         return state
 
     def info(self) -> str:
@@ -277,6 +284,8 @@ class GameSession:
         table = []
         table.append(['Player'] + [player for player in self.players()])
         table.append(['VP'] + [player.vp() for player in self.players()])
+        table.append(['Agent'] + [str(player.agent()) for player in self.players()])
+        table.append(['Road Len'] + [self.board().road_len(player) for player in self.players()])
         table.append(['Longest Road'] + ['X' if player.has_longest_road() else '' for player in self.players()])
         table.append(['Largest Army'] + ['X' if player.has_largest_army() else '' for player in self.players()])
         max_cities = max(1, max(p.num_cities() for p in self.players()))
@@ -376,7 +385,7 @@ class GameSession:
                 build_settlement_move = curr_player.choose(
                     self.__get_possible_build_settlement_moves(curr_player, pre_game=True), deepcopy(self))
                 adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
-                possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge)
+                possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, pre_game=True)
                                        for edge in adj_edges]
 
                 # get player's choice of road
@@ -401,6 +410,8 @@ class GameSession:
                     curr_player.receive_cards(starting_resources)
                     dprint(f'[PRE GAME] player {curr_player} received {starting_resources} '
                            f'for his 2nd settlement at {hex(settlement_node)}')
+
+                print(self.status_table())
         print(self.board())
 
     def __is_game_over(self) -> bool:
@@ -432,7 +443,7 @@ class GameSession:
             # take card from player
             opp_hand = opp.resource_hand()
             if opp_hand.size():
-                removed_card = Consts.ResourceType.UNKNOWN if mock else opp_hand.remove_random_card()
+                removed_card = Hand.Hand(Consts.ResourceType.UNKNOWN) if mock else opp_hand.remove_random_card()
                 curr_player.receive_cards(removed_card)
                 if printout:
                     dprint(f'[ROBBER PROTOCOL] player {curr_player} took {removed_card} from player {opp}')
@@ -464,7 +475,7 @@ class GameSession:
                     del self.board().nodes()[settlement_node_to_delete]
                     player.remove_settlement(settlement_node_to_delete)
 
-                buildable_cost = Consts.COSTS.get(move.builds())
+                buildable_cost = Consts.COSTS.get(move.builds()) if not move.is_pre_game() else Hand.Hand()
                 player.throw_cards(buildable_cost)
                 self.__res_deck.insert(buildable_cost)
 
@@ -482,7 +493,10 @@ class GameSession:
 
             elif isinstance(move, Moves.UseDevMove):
                 dev_used = move.uses()
-                player.use_dev(dev_used)  # remove the card
+                if isinstance(move, Moves.UseKnightDevMove) and move.robber_activated():
+                    pass
+                else:
+                    player.use_dev(dev_used)  # remove the card
                 if printout:
                     dprint(f'[APPLY MOVE] player {player} used {dev_used} dev card')
 
@@ -514,8 +528,8 @@ class GameSession:
                         dprint(f'[APPLY MOVE] player {player} gained {hand_gained.size()} {resource_type}')
 
                 elif isinstance(move, Moves.UseRoadBuildingDevMove):
-                    possible_road_moves = self.__get_possible_build_road_moves(player)
                     for _ in range(Consts.ROAD_BUILDING_NUM_ROADS):
+                        possible_road_moves = self.__get_possible_build_road_moves(player)
                         if not possible_road_moves:
                             break
                         road_move = player.choose(possible_road_moves, deepcopy(self))
@@ -657,9 +671,9 @@ class GameSession:
                                     opponents_on_hex.append(opp)    # then its an opponent
                         if opponents_on_hex:
                             for opp in opponents_on_hex:
-                                moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), opp))
+                                moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), opp, robber_activated=robber))
                         else:   # no opponents, make move without opp id
-                            moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None))
+                            moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None, robber_activated=robber))
         # print('KNIGHT MOVES', moves)
         return moves
 
@@ -684,7 +698,7 @@ class GameSession:
         return moves
 
     def __get_possible_build_settlement_moves(self, player: Player.Player, pre_game: bool = False) -> List[Moves.BuildMove]:
-        moves = [Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node)
+        moves = [Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node, pre_game=pre_game)
                  for node in self.__buildable_nodes(player, pre_game)]
         # print('POSSIBLE SETTLE MOVES', moves)
         return moves
@@ -707,13 +721,13 @@ if __name__ == '__main__':
     # a1 = HumanAgent(0, 'kiki')
     # a2 = HumanAgent(1, 'ty')
     # a3 = HumanAgent(2, 'oriane')
-    a0 = RandomAgent(0)
-    a1 = OneMoveHeuristicAgent(1, heuristic=vp_heuristic)
+    a0 = RandomAgent()
+    a1 = OneMoveHeuristicAgent(heuristic=vp_heuristic)
     # p1 = RandomAgent(1)
     # p2 = RandomAgent(2)
     p0 = Player.Player(a0)
     p1 = Player.Player(a0)
     p2 = Player.Player(a0)
     p3 = Player.Player(a1)
-    g = GameSession(p0, p1, p2, p3, log=args.save_log)
+    g = GameSession(args.save_log, p0, p1, p2, p3)
     g.run_game()
