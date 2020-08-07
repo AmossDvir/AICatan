@@ -88,10 +88,20 @@ class OneMoveHeuristicAgent(Agent):
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         # print(f"\n\nDEBUG:\n{[move.info() for move in moves]}\n\n")
         move_values = []
+        print('ONE MOVE AGENT MOVES AVAILABLE')
+        print(*(m.info() for m in moves), sep='\n')
         for move in moves:
             new_state = state.simulate_move(move)
             # This is not good enough - simulate move will only choose one random outcome
             # when several are possible (like rolling the dice or buying dev card)
             move_values.append(self.__heur_func(new_state, move.player()))
-        argmax = move_values.index(max(move_values))
-        return moves[argmax]
+        max_val = max(move_values)
+        argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
+        moves = [moves[i] for i in argmax_vals_indices]
+        print('ARGMAX MOVES')
+        print(*(m.info() for m in moves), sep='\n')
+        move = RandomAgent().choose(moves, player, state)
+        print('RETURNED MOVE')
+        print(move.info())
+        return move
+        # return moves[argmax_idx]

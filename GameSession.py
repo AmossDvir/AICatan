@@ -385,7 +385,7 @@ class GameSession:
                 build_settlement_move = curr_player.choose(
                     self.__get_possible_build_settlement_moves(curr_player, pre_game=True), deepcopy(self))
                 adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
-                possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, pre_game=True)
+                possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
                                        for edge in adj_edges]
 
                 # get player's choice of road
@@ -475,7 +475,7 @@ class GameSession:
                     del self.board().nodes()[settlement_node_to_delete]
                     player.remove_settlement(settlement_node_to_delete)
 
-                buildable_cost = Consts.COSTS.get(move.builds()) if not move.is_pre_game() else Hand.Hand()
+                buildable_cost = Consts.COSTS.get(move.builds()) if not move.is_free() else Hand.Hand()
                 player.throw_cards(buildable_cost)
                 self.__res_deck.insert(buildable_cost)
 
@@ -529,7 +529,7 @@ class GameSession:
 
                 elif isinstance(move, Moves.UseRoadBuildingDevMove):
                     for _ in range(Consts.ROAD_BUILDING_NUM_ROADS):
-                        possible_road_moves = self.__get_possible_build_road_moves(player)
+                        possible_road_moves = self.__get_possible_build_road_moves(player, free=True)
                         if not possible_road_moves:
                             break
                         road_move = player.choose(possible_road_moves, deepcopy(self))
@@ -690,15 +690,15 @@ class GameSession:
         throw_moves = [Moves.ThrowMove(player, hand) for hand in throw_combinations]
         return throw_moves
 
-    def __get_possible_build_road_moves(self, player: Player.Player) -> List[Moves.BuildMove]:
+    def __get_possible_build_road_moves(self, player: Player.Player, free: bool = False) -> List[Moves.BuildMove]:
         moves = []
         if self.__has_remaining_roads(player):
-            moves = [Moves.BuildMove(player, Consts.PurchasableType.ROAD, edge)
+            moves = [Moves.BuildMove(player, Consts.PurchasableType.ROAD, edge, free=free)
                      for edge in self.__buildable_edges(player)]
         return moves
 
     def __get_possible_build_settlement_moves(self, player: Player.Player, pre_game: bool = False) -> List[Moves.BuildMove]:
-        moves = [Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node, pre_game=pre_game)
+        moves = [Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node, free=pre_game)
                  for node in self.__buildable_nodes(player, pre_game)]
         # print('POSSIBLE SETTLE MOVES', moves)
         return moves

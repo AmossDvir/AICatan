@@ -140,14 +140,15 @@ class ThrowMove(Move):
 
 
 class BuildMove(Move):
-    def __init__(self, player: Player.Player, btype: Consts.PurchasableType, location: int, pre_game: bool = False):
+    def __init__(self, player: Player.Player, btype: Consts.PurchasableType, location: int,
+                 free: bool = False):
         super().__init__(player, MoveType.BUILD)
         self.__to_build = btype
         self.__loc = location
-        self.__pre_game = pre_game
+        self.__is_free = free
 
-    def is_pre_game(self) -> bool:
-        return self.__pre_game
+    def is_free(self) -> bool:
+        return self.__is_free
 
     def builds(self) -> Consts.PurchasableType:
         """:returns the building type as a PurchasableType enum"""
