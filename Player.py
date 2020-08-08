@@ -113,6 +113,19 @@ class Player:
         assert 0 <= num_cities <= Consts.MAX_CITIES_PER_PLAYER
         return num_cities
 
+    def harbors(self) -> List[Consts.ResourceType]:
+        """
+        :return: current number of harbor nodes player has on the board (0-9)
+        """
+        harbor_types = []
+        for node in self.settlement_nodes() + self.city_nodes():
+            for harbor_type, locations in Consts.HARBOR_NODES.items():
+                if node in locations:
+                    harbor_types.append(harbor_type)
+                    break
+
+        return harbor_types
+
     def num_roads(self) -> int:
         """
         :return: current number of roads player has on the board (0-15)

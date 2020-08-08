@@ -73,8 +73,31 @@ class HumanAgent(Agent):
         self.__name = name
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
-        idx = int(input('Player {}, choose move by index:\n{}\n'.format(player, '\n'.join('{:3} - {}'.format(i, m.info()) for i, m in enumerate(moves)))))
-        return moves[idx]
+        inpt = input('Player {}, choose move by index (or n = nodes map, e = edges map, b = board, m = moves list):\n{}\n'.format(player, '\n'.join('{:3} - {}'.format(i, m.info()) for i, m in enumerate(moves))))
+        while True:
+            if inpt == 'n':
+                print(state.board().nodes_map())
+                # idx = int(input('Player {}, choose move by index (or -1 for nodes map, -2 for edges map):\n'))
+            elif inpt == 'e':
+                print(state.board().edges_map())
+                # idx = int(input('Player {}, choose move by index (or -1 for nodes map, -2 for edges map):\n'))
+            elif inpt == 'b':
+                print(state.board())
+            elif inpt == 'm':
+                print(*(m.info() for m in moves), sep='\n')
+            else:
+                try:
+                    idx = int(inpt)
+                    if not 0 <= idx < len(moves):
+                        print('supply an integer int the range [0, {}] please'.format(len(moves) - 1))
+                    else:
+                        move = moves[idx]
+                        return move
+                except:
+                    print('supply an integer int the range [0, {}] please'.format(len(moves) - 1))
+            inpt = input(
+                'Player {}, choose move by index (or n = nodes map, e = edges map, b = board, m = moves list):\n'.format(
+                    player))
 
     def __repr__(self):
         return self.__name

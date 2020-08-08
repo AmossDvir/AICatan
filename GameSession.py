@@ -288,6 +288,15 @@ class GameSession:
         table.append(['Road Len'] + [self.board().road_len(player) for player in self.players()])
         table.append(['Longest Road'] + ['X' if player.has_longest_road() else '' for player in self.players()])
         table.append(['Largest Army'] + ['X' if player.has_largest_army() else '' for player in self.players()])
+
+        player_harbors = [p.harbors() for p in self.players()]
+        max_harbors = max(len(harbors) for harbors in player_harbors)
+        for harbor_idx in range(max_harbors):
+            table.append(
+                (['Harbors'] if harbor_idx == 0 else ['']) + [
+                    (player_harbors[player_idx][harbor_idx] if harbor_idx < len(player_harbors[player_idx])
+                     else '') for player_idx in range(len(self.players()))])
+
         max_cities = max(1, max(p.num_cities() for p in self.players()))
         for city_idx in range(max_cities):
             table.append(
@@ -374,13 +383,12 @@ class GameSession:
 
     def __run_pre_game(self) -> None:
         dprint('[CATAN] Pre-Game started')
+        print(self.board())
         for _round in (1, 2):
             turn_gen = ((player for player in self.players())               # 0, 1, 2, 3
                         if _round == 1 else
                         (player for player in reversed(self.players())))    # 3, 2, 1, 0
             for curr_player in turn_gen:
-                print(self.board())
-
                 # get player's choice of settlement
                 build_settlement_move = curr_player.choose(
                     self.__get_possible_build_settlement_moves(curr_player, pre_game=True), deepcopy(self))
@@ -388,16 +396,19 @@ class GameSession:
                 possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
                                        for edge in adj_edges]
 
-                # get player's choice of road
-                build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
-                settlement_node, road_edge = build_settlement_move.at(), build_adj_road_move.at()
-                dprint(f'[PRE GAME] player {curr_player} placed settlement at {hex(settlement_node)}, '
-                       f'road at {hex(road_edge)}')
-
                 # add new settlement to game
+                settlement_node = build_settlement_move.at()
                 settlement = Buildable.Buildable(curr_player, settlement_node, Consts.PurchasableType.SETTLEMENT)
                 curr_player.add_buildable(settlement)
                 self.__board.build(settlement)
+
+                print(self.board())
+
+                # get player's choice of road
+                build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
+                road_edge = build_adj_road_move.at()
+                dprint(f'[PRE GAME] player {curr_player} placed settlement at {hex(settlement_node)}, '
+                       f'road at {hex(road_edge)}')
 
                 # add new road to game
                 road = Buildable.Buildable(curr_player, road_edge, Consts.PurchasableType.ROAD)
@@ -411,6 +422,7 @@ class GameSession:
                     dprint(f'[PRE GAME] player {curr_player} received {starting_resources} '
                            f'for his 2nd settlement at {hex(settlement_node)}')
 
+                print(self.board())
                 print(self.status_table())
         print(self.board())
 
@@ -730,4 +742,5 @@ if __name__ == '__main__':
     p2 = Player.Player(a0)
     p3 = Player.Player(a1)
     g = GameSession(args.save_log, p0, p1, p2, p3)
-    g.run_game()
+    print(g.board().edges_map())
+    # g.run_game()
