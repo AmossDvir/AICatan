@@ -66,9 +66,9 @@ class Board:
         self.hexes()[hex_id].set_robber(True)
 
     def resource_distributions_by_node(self, coord: int) -> Hand.Hand:
-        print('coord', coord)
-        print('adj', self.get_adj_tile_ids_to_node(coord))
-        print([self.hexes()[h].resource() for h in self.get_adj_tile_ids_to_node(coord)])
+        # print('coord', coord)
+        # print('adj', self.get_adj_tile_ids_to_node(coord))
+        # print([self.hexes()[h].resource() for h in self.get_adj_tile_ids_to_node(coord)])
         return Hand.Hand(*(self.hexes()[h].resource() for h in self.get_adj_tile_ids_to_node(coord)
                            if self.hexes()[h].resource() in Consts.YIELDING_RESOURCES))
 
