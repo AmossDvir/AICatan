@@ -4,7 +4,10 @@ import pickle
 from copy import deepcopy
 from GameConstants import *
 from GameSession import *
+from keras.models import Sequential
+from keras.layers import Dense
 
+BATCH_SIZE = 64
 INPUT_SIZE = 560
 # Overall size = 560:
 # Cards:
@@ -74,15 +77,53 @@ def session_to_input(session):
     # Boolean Robber
     robber_data = [i == board.robber_hex().id() - 1 for i in range(19)]
     data = np.hstack([hand_data, city_sett_data, roads_data, robber_data])
-    print(data)
     return data
+
+def make_model():
+    model = Sequential()
+    model.add(Dense(1000, input_shape=(INPUT_SIZE,), activation='relu'))
+    model.add(Dense(1000, activation='relu'))
+    model.add(Dense(4, activation='sigmoid'))
+    model.compile(loss='mse', metrics=['accuracy'])
+    return model
+
+def predict(model, session_batch):
+    """
+    :param model: The keras model we are are training
+    :param session_batch: A list of BATCH_SIZE sessions
+    :return: A (BATCH_SIZE, 4) np array of the predicted values
+    """
+    # TODO: Check for game over
+    predicted = np.zeros((BATCH_SIZE, 4))
+    for i, session in enumerate(session_batch):        
+        legal_moves = session.get_possible_moves(session.current_player())
+        move_preds = np.zeros((len(legal_moves), 4))
+        inputs = np.zeros((len(legal_moves), INPUT_SIZE))
+        for i, move in enumerate(legal_moves):
+            inputs[i,:] = session_to_input(session.simulate_move(move))
+        move_preds = model.predict(inputs)
+        chosen_move_index = move_preds[:, 0].argmax()
+        predicted[i, :] = move_preds[chosen_move_index, :]
+    return predicted
+
 
 if __name__ == "__main__":
     file = open('log.pkl', 'rb')
-    for i in range(100):
-        s = pickle.load(file)
-    # print(s.status_table())
-    session_to_input(s)
+    sessions = []
+    # Load the sessions:
+    while(True):
+        try:
+            sessions.append(pickle.load(file))
+        except EOFError:
+            break
+    model = make_model()
+    batch = np.zeros((BATCH_SIZE, INPUT_SIZE))
+    for i in range(BATCH_SIZE):
+        batch[i, :] = session_to_input(sessions[i])
+    pred = predict(model, sessions[:BATCH_SIZE])
+    model.fit(batch, pred, batch_size=BATCH_SIZE)
+
+    
 
 
 
