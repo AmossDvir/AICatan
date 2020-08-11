@@ -187,8 +187,7 @@ class ExpectimaxProbAgent(Agent):
                         del curr_move
                         del current_iter_state
                         break
-
-                    curr_move = self.__randy.choose(current_moves)
+                    curr_move = self.__randy.choose(current_moves, player, current_iter_state)
 
         moves_expectations = []
         for move_vals in moves_values:
