@@ -60,7 +60,6 @@ def prefer_resources_in_each_part(session:GameSession,player:Player):
     __num_buildings =  __num_roads + __num_settles + __num_cities
 
     __calc_score = (100*(0.8*__num_forest + 1.2*__num_bricks+0.3*__num_sheep+0.3*__num_wheat)/((__num_buildings))+(__num_buildings)*(0.75*__num_sheep + 0.75*__num_wheat + 1.5*__num_ore))
-    # print("resources heuristic: " , __calc_score)
     return __calc_score/100
 
 def roads_heuristic(session:GameSession,player:Player):
