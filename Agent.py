@@ -3,9 +3,10 @@ import GameConstants as Consts
 from enum import Enum
 import Moves as Moves
 import Player as Player
-from typing import List
+from typing import List, Callable
 from random import choice
 from Heuristics import *
+from copy import deepcopy
 
 
 class AgentType(Enum):
@@ -13,7 +14,7 @@ class AgentType(Enum):
     HUMAN = 1
     ONE_MOVE = 2
     PROBABILITY = 3
-    DEEP = 4
+    EXPROB = 4
 
     def __str__(self):
         return self.name
@@ -147,34 +148,55 @@ class ProbabilityAgent(Agent):
         return move
 
 
-class DeepAgent(Agent):
-    def __init__(self):
-        super().__init__(AgentType.DEEP)
+class ExpectimaxProbAgent(Agent):
+    def __init__(self, heuristic: Callable, depth: int = 1, iters: int = 1):
+        super().__init__(AgentType.EXPROB)
+        self.__depth = depth
+        self.__iterations = iters
+        self.__h = heuristic
+        if depth > 0:
+            self.__lower_level = ExpectimaxProbAgent(self.__h, self.__depth - 1, self.__iterations)
+        else:
+            self.__lower_level = None
+        self.__randy = RandomAgent()
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
-        current_moves = moves
-        while current_moves:
-            current_choice = choice(current_moves)
-            print('\n\n\nCURR PLAYER =', state.sim_current_player())
-            print('CURR MOVES =')
-            print(*(m.info() for m in current_moves), sep='\n')
-            print('\nCHOICE =', current_choice.info())
-            current_moves = state.simulate_game(current_choice)
-            curr_player = state.sim_current_player()
-            # return self.choose(current_moves, curr_player, state)
-        print('simulation done')
-        return choice(moves)
-        move_vals = []
+        current_moves = deepcopy(moves)
+        # print(*(m.info() for m in moves), sep='\n')
+        moves_values = []
+        for i, move in enumerate(current_moves):
+            moves_values.append([])
+            for _ in range(self.__iterations):
+                cycles = 0
+                opp_played = False
+                current_iter_state = deepcopy(state)
+                curr_move = deepcopy(move)
+                while True:
+                    current_moves = current_iter_state.simulate_game(curr_move)
+                    curr_player = current_iter_state.sim_current_player()
 
-        for move in moves:
-            new_state = state.simulate_move(move)
-            for p in new_state.players():
-                if p.get_id() == player.get_id():
-                    move_vals.append(state.board()._probability_score(p) + state.board()._expectation_score(p))
+                    if curr_player.get_id() == player.get_id():
+                        if opp_played:
+                            cycles += 1
+                        opp_played = False
+                    elif not opp_played:
+                        opp_played = True
 
-        max_val = max(move_vals)
-        argmax_vals_indices = [i for i, val in enumerate(move_vals) if val == max_val]
-        moves = [moves[i] for i in argmax_vals_indices]
-        move = RandomAgent().choose(moves, player, state)
+                    if cycles >= self.__depth or not current_moves:  # max depth or EOG reached
+                        moves_values[i].append(self.__h(current_iter_state, player))
+                        del curr_move
+                        del current_iter_state
+                        break
 
-        return move
+                    curr_move = choice(current_moves)
+
+        moves_expectations = []
+        for move_vals in moves_values:
+            if not move_vals:
+                moves_expectations.append(0)
+            else:
+                moves_expectations.append(sum(move_vals) / len(move_vals))
+        max_exp = max(moves_expectations)
+        all_max_indices = [i for i, exp in enumerate(moves_expectations) if exp == max_exp]
+        max_moves = [moves[i] for i in all_max_indices]
+        return self.__randy.choose(max_moves, player, state)

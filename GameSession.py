@@ -67,6 +67,7 @@ class GameSession:
         self.__run_pre_game()
 
         for curr_player in self.__turn_generator(self.__num_players):
+            print(self.__num_turns_played)
             self.__curr_player_sim = curr_player
             self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
 
