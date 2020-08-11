@@ -15,6 +15,7 @@ class AgentType(Enum):
     ONE_MOVE = 2
     PROBABILITY = 3
     EXPROB = 4
+    DQN = 5
 
     def __str__(self):
         return self.name
@@ -202,3 +203,19 @@ class ExpectimaxProbAgent(Agent):
         all_max_indices = [i for i, exp in enumerate(moves_expectations) if exp == max_exp]
         max_moves = [moves[i] for i in all_max_indices]
         return self.__randy.choose(max_moves, player, state)
+
+
+class DQNAgent(Agent):
+    def __init__(self):
+        super().__init__(AgentType.DQN)
+        # I'm importing here so the other agents will be able to run without tf and keras
+        import numpy as np
+        import tensorflow as tf
+        from keras.models import Sequential
+        from keras.layers import Dense
+        from DQN import predict
+        self.network = tf.keras.models.load_model("current_model")
+
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+        predicts = predict(self.network, [state])
+        
