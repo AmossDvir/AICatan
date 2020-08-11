@@ -2,6 +2,7 @@ from typing import Tuple
 from random import randint
 
 PROBABILITIES = {
+    0:  0,
     2:  1/36,
     3:  2/36,
     4:  3/36,

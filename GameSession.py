@@ -13,7 +13,7 @@ import Buildable
 import hexgrid
 import GameLogger
 
-DEBUG = False
+DEBUG = True
 
 def dprint(*args, **kwargs):
     if DEBUG:

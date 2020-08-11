@@ -1,6 +1,7 @@
 import GameSession
 import Player
 import GameConstants as Consts
+import Dice
 
 
 
@@ -19,7 +20,7 @@ def find_sim_player(session:GameSession,player:Player):
 def vp_heuristic(session: GameSession, player: Player) -> int:
     __sim_player = find_sim_player(session, player)
     if __sim_player != None:
-        return __sim_player.vp()
+        return __sim_player.vp()/10 # 10 is the bound
     return 0
 
 def harbors_heuristic(session:GameSession,player:Player):
@@ -31,7 +32,7 @@ def harbors_heuristic(session:GameSession,player:Player):
     """
     __sim_player = find_sim_player(session, player)
     player.harbors()
-    return len(__sim_player.harbors())
+    return len(__sim_player.harbors())/9 # 9: number of harbours in the game
 
 
 def prefer_resources_in_each_part(session:GameSession,player:Player):
@@ -64,11 +65,11 @@ def prefer_resources_in_each_part(session:GameSession,player:Player):
 
 def roads_heuristic(session:GameSession,player:Player):
     __sim_player = find_sim_player(session,player)
-    return __sim_player.num_roads()
+    return __sim_player.num_roads()/15 # 15 roads max per player
 
 def settles_heuristic(session:GameSession,player:Player):
     __sim_player = find_sim_player(session,player)
-    return __sim_player.num_settlements()*5
+    return __sim_player.num_settlements()/5 # 5 settlements max per player
 
 
 def resources_diversity_heuristic(session:GameSession,player:Player):
@@ -96,22 +97,19 @@ def build_in_good_places(session:GameSession,player:Player):
     __sim_player = find_sim_player(session, player)
     __board = session.board()
     # print(__sim_player.settlement_nodes())
-    print(__board)
+
     nodes = []
+    tiles_types = set()
+    num_tiles = 0
+    tiles_prob = 0
     for node in __sim_player.settlement_nodes():
         nodes.append(node)
-        tiles = __board.get_adj_tile_ids_to_node(node)
-        for tile in tiles:
-            print(__board.hexes()[tile])
-            print(__board.hexes()[tile].token())
-        # print(__board.hexes()[])
-        # print(node)
-    # res = [__board.hexes()[[tile for tile in __board.get_adj_tile_ids_to_node(node)]]]
-    # print(res)
+        for tile in __board.get_adj_tile_ids_to_node(node):
+            num_tiles += 1
+            tiles_types.add(__board.hexes()[tile].resource())
+            tiles_prob += Dice.PROBABILITIES[__board.hexes()[tile].token()]
+    return (num_tiles*len(tiles_types)*tiles_prob)/227.5 # 227.5 is the bound
 
-    # res = [(__board.resource_distributions_by_node(node)) for node in __sim_player.settlement_nodes()]
-    # print([r for r in res])
-    # print([hex_tile.token() for hex_tile in __board.hexes()])
 
 
 def probability_score_heuristic(session: GameSession, player: Player) -> float:
@@ -121,7 +119,7 @@ def probability_score_heuristic(session: GameSession, player: Player) -> float:
 
 
 def road_len_heuristic(session: GameSession, player: Player) -> float:
-    return session.board().road_len(player)
+    return session.board().road_len(player) / 15
 
 
 def everything_heuristic(session: GameSession, player: Player) -> float:
@@ -156,17 +154,15 @@ def main_heuristic(session:GameSession,player:Player):
     __roads = roads_heuristic(session,player)
     __settles = settles_heuristic(session,player)
     __diversity = resources_diversity_heuristic(session,player)
-    build_in_good_places(session,player)
+    __build = build_in_good_places(session,player)
 
-#     print("////////////////////")
-#     print(str.title(f"victory point: {__vp}\nharbours: \
-# {__harbours}\nprefer resources in each part: {__prefer}\nroads: \
-# {__roads}\nsettlements: {__settles}\nresource diversity: {__diversity}"))
-#     print("////////////////////")
+    print("////////////////////")
+    print(str.title(f"victory point: {__vp}\nharbours: \
+{__harbours}\nroads: {__roads}\nsettlements: {__settles}\nbuild in good places: {__build}"))
+    print("////////////////////")
 
-
-    return vp_heuristic(session,player) + harbors_heuristic(session,player) + \
-           prefer_resources_in_each_part(session,player) + roads_heuristic(session,player) + \
-           settles_heuristic(session,player)+resources_diversity_heuristic(session,player)
+    return __vp + __harbours + \
+           __roads + \
+           __settles + __build
 
 
