@@ -143,6 +143,7 @@ class GameSession:
                 self.__phase = GamePhase.GAME_OVER
                 print(self.status_table())
                 print(f'\n\n\nGAME OVER - player {curr_player} won!!!')
+                print("Game Ended After ",self.__num_turns_played," Turns")
                 break
 
     def current_player(self) -> Player.Player:
@@ -922,3 +923,4 @@ class GameSession:
                  for node in self.__buildable_nodes(player, pre_game)]
         # print('POSSIBLE SETTLE MOVES', moves)
         return moves
+
