@@ -106,7 +106,7 @@ class HumanAgent(Agent):
 
 class OneMoveHeuristicAgent(Agent):
     # Open the tree only one move forward and apply the given heuristic on it
-    def __init__(self, heuristic=vp_heuristic):
+    def __init__(self, heuristic=main_heuristic):
         super().__init__(AgentType.ONE_MOVE)
         self.__heur_func = heuristic
 
