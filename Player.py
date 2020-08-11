@@ -225,3 +225,6 @@ class Player:
 
     def __hash__(self):
         return self.get_id()
+
+    def get_name(self):
+        return self.__name

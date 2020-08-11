@@ -1,2 +1,4 @@
 .idea
-logic/agents/__pycache__/
+__pycache__
+result_analyzer.xlsx
+~$result_analyzer.xlsx
