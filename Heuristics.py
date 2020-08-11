@@ -1,5 +1,6 @@
 import GameSession
 import Player
+from typing import Callable
 import GameConstants as Consts
 import Dice
 
@@ -9,7 +10,7 @@ VP_WEIGHT = 0  # victory points heuristic weight
 PREFER_RESOURCES_WEIGHT = 0
 
 
-def find_sim_player(session:GameSession,player:Player):
+def find_sim_player(session: GameSession, player: Player) -> Player:
     # find the player's turn for the current session simulation
     for sim_player in session.players():
         if sim_player.get_id() == player.get_id():
@@ -23,7 +24,8 @@ def vp_heuristic(session: GameSession, player: Player) -> int:
         return __sim_player.vp()/10 # 10 is the bound
     return 0
 
-def harbors_heuristic(session:GameSession,player:Player):
+
+def harbors_heuristic(session: GameSession, player: Player):
     """
     the more harbors - the higher the score gets
     :param session: a GameSession
@@ -32,10 +34,46 @@ def harbors_heuristic(session:GameSession,player:Player):
     """
     __sim_player = find_sim_player(session, player)
     player.harbors()
-    return len(__sim_player.harbors())/9 # 9: number of harbours in the game
+    return len(__sim_player.harbors())
 
 
-def prefer_resources_in_each_part(session:GameSession,player:Player):
+def game_won_heuristic(session: GameSession, player: Player):
+    return float('inf') if session.winner() == player else 0
+
+
+def relative_vp_heuristic(session: GameSession, player: Player):
+    """:returns VP / (average opponent VP) ratio"""
+    return relative_of(vp_heuristic, session, player)
+
+
+def negative_vp_heuristic(session: GameSession, player: Player):
+    return negative_of(vp_heuristic, session, player)
+
+
+def negative_of(heuristic: Callable[[GameSession, Player], float], session: GameSession, player: Player) -> float:
+    """:returns the negative value of given heuristic based on how good opponents values are for heuristic"""
+    opp_vals = 0
+    for p in session.players():
+        if p != player:
+            opp_vals += heuristic(session, p)
+
+    return - opp_vals
+
+
+def relative_of(heuristic: Callable[[GameSession, Player], float], session: GameSession, player: Player) -> float:
+    """:returns ratio of player's heuristic value to average opponents value on given heuristic"""
+    my_val = 0
+    opp_vals = []
+    for p in session.players():
+        if p != player:
+            opp_vals.append(heuristic(session, p))
+        else:
+            my_val += heuristic(session, p)
+
+    return my_val / (sum(opp_vals) / len(opp_vals))
+
+
+def prefer_resources_in_each_part(session: GameSession, player: Player):
     """
     heuristic that gives priority for having bricks and woods in the
     the early stages of the game and having sheep, ore and wheat in
@@ -46,7 +84,7 @@ def prefer_resources_in_each_part(session:GameSession,player:Player):
     """
 
     # resources:
-    __sim_player = find_sim_player(session,player)
+    __sim_player = find_sim_player(session, player)
     __num_forest = __sim_player.resource_hand().cards_of_type(Consts.ResourceType.FOREST).size()
     __num_bricks = __sim_player.resource_hand().cards_of_type(Consts.ResourceType.BRICK).size()
     __num_sheep = __sim_player.resource_hand().cards_of_type(Consts.ResourceType.SHEEP).size()
@@ -57,10 +95,12 @@ def prefer_resources_in_each_part(session:GameSession,player:Player):
     __num_roads = __sim_player.num_roads()
     __num_cities = __sim_player.num_cities()
     __num_settles = __sim_player.num_settlements()
-    __num_buildings =  __num_roads + __num_settles + __num_cities
+    __num_buildings = __num_roads + __num_settles + __num_cities
 
-    __calc_score = (100*(0.8*__num_forest + 1.2*__num_bricks+0.3*__num_sheep+0.3*__num_wheat)/((__num_buildings))+(__num_buildings)*(0.75*__num_sheep + 0.75*__num_wheat + 1.5*__num_ore))
-    return __calc_score/100
+    __calc_score = (100 * (0.8 * __num_forest + 1.2 * __num_bricks + 0.3 * __num_sheep + 0.3 * __num_wheat) / (
+        (__num_buildings)) + (__num_buildings) * (0.75 * __num_sheep + 0.75 * __num_wheat + 1.5 * __num_ore))
+    # print("resources heuristic: " , __calc_score)
+    return __calc_score / 100
 
 def roads_heuristic(session:GameSession,player:Player):
     __sim_player = find_sim_player(session,player)
@@ -71,14 +111,14 @@ def settles_heuristic(session:GameSession,player:Player):
     return __sim_player.num_settlements()/5 # 5 settlements max per player
 
 
-def resources_diversity_heuristic(session:GameSession,player:Player):
+def resources_diversity_heuristic(session: GameSession, player: Player):
     """
     prefer having more resources and diversity in resources
     :param session:
     :param player:
     :return:
     """
-    __sim_player = find_sim_player(session,player)
+    __sim_player = find_sim_player(session, player)
     __resources = [__sim_player.resource_hand().cards_of_type(resource) for resource in Consts.ResourceType]
     __num_types = 0
     __num_res = 0
@@ -92,7 +132,7 @@ def resources_diversity_heuristic(session:GameSession,player:Player):
     # print("--------------------")
     return __num_res * __num_types/3
 
-def build_in_good_places(session:GameSession,player:Player):
+def build_in_good_places(session: GameSession, player: Player):
     __sim_player = find_sim_player(session, player)
     __board = session.board()
     # print(__sim_player.settlement_nodes())
