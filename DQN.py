@@ -3,64 +3,87 @@ import tensorflow as tf
 import hexgrid
 import pickle
 from copy import deepcopy
+
+import HexTile
 from GameConstants import *
 from GameSession import *
+from Board import *
 from Moves import *
+from Dice import PROBABILITIES
+from Hand import Hand
+
 from keras.models import Sequential
 from keras.layers import Dense
 
 BATCH_SIZE = 64
-INPUT_SIZE = 560
-# Overall size = 560:
-# Cards:
+INPUT_SIZE = 698
+# Overall size = 698:
+
+# Cards Overall:                  37
 # Agent's resources Hand:         5
 # Other players hands:            15
 # Agent's (closed) dev card Hand: 5
 # Other players hidden dev cards: 3
 # Open dev cards (non-Knights):   5
 # Open knights (per player):      4
-# Board:
+
+# Board Overall:                  637
+# Boolean hex_type (19x6):        114
 # Boolean city/settlemets (54x4): 216
 # Boolean roads (72x4):           288
 # Boolean Robber                  19
+
+# Features Overall:               24
+# Player vp                       4
+# Player access to resource(4*5)  20
+
 
 # Notice that we have to change the player's order since they are not symmetrical
 # since we have more information about the current player, so regardless of the
 # players numbering, the current player is always the first
 
 def session_to_input(session):
-    # Basic setup:
-    edges = list(hexgrid.legal_edge_coords()) # So we can get the indices
-    nodes = list(hexgrid.legal_node_coords()) # same
-    current_player = session.current_player()
     all_players = get_player_order(session)
-    hand_data = np.zeros(37, np.uint8)
+    hand_vec = get_hand_vec(all_players)
+    board = session.board()
+    board_vec = get_board_vec(board, all_players)
+    feature_vec = get_feature_vec(board, all_players)
+    data = np.hstack([hand_vec, board_vec, feature_vec])
+    return data
 
+def get_hand_vec(players):
+    hand_data = np.zeros(37, np.uint8)
     # Resources Hand:
-    for i, player in enumerate(all_players):
+    for i, player in enumerate(players):
         for j, resc in enumerate(YIELDING_RESOURCES):
             hand_data[i*5 + j] = len(player.resource_hand().cards_of_type(resc))
     # Agent's (closed) dev card Hand: 5
     for i, dev in enumerate([DevType.KNIGHT, DevType.VP, DevType.MONOPOLY, DevType.YEAR_OF_PLENTY, DevType.ROAD_BUILDING]):
-        hand_data[20+i] = len(current_player.dev_hand().cards_of_type(dev))
+        hand_data[20+i] = len(players[0].dev_hand().cards_of_type(dev))
     # Other players hidden dev cards: 3
-    for i, p in enumerate(all_players[1:]):
+    for i, p in enumerate(players[1:]):
         hand_data[25+i] = len(p.dev_hand())
     # used dev cards:   5
-    used = deepcopy(current_player.used_dev_hand())
-    for p in all_players[1:]:
+    used = deepcopy(players[0].used_dev_hand())
+    for p in players[1:]:
         used.insert(p.used_dev_hand())
     for i, dev in enumerate([DevType.KNIGHT, DevType.VP, DevType.MONOPOLY, DevType.YEAR_OF_PLENTY, DevType.ROAD_BUILDING]):
         hand_data[28+i] = len(used.cards_of_type(dev))
     # Open knights (per player): 4
-    for i, p in enumerate(all_players):
+    for i, p in enumerate(players):
         hand_data[33+i] = len(p.dev_hand().cards_of_type(DevType.KNIGHT))
+    return hand_data
 
-    # Board:
-    board = session.board()
-    # Boolean city/settlemets (54x4): 216
+def get_board_vec(board, players):
+    edges = list(hexgrid.legal_edge_coords()) # So we can get the indices
+    nodes = list(hexgrid.legal_node_coords()) # same
+    # Tiles
+    tile_data = np.zeros(114)
+    for i, tile_type in enumerate([ResourceType.FOREST, ResourceType.ORE, ResourceType.BRICK, ResourceType.SHEEP, ResourceType.WHEAT, ResourceType.DESERT]):
+        tile_data[i*19:(i+1)*19] = [i.resource() == tile_type for i in board.hexes()]
+    # Cities and settlements
     city_sett_data = np.zeros(216, np.uint8)
-    for i, p in enumerate(all_players):
+    for i, p in enumerate(players):
         for j in p.settlement_nodes():
             index = nodes.index(j)
             city_sett_data[(54 * i) + index] = 1
@@ -69,14 +92,29 @@ def session_to_input(session):
             city_sett_data[(54 * i) + index] = 2
     # Boolean roads (72x4):           288
     roads_data = np.zeros(288, np.uint8)
-    for i, p in enumerate(all_players):
+    for i, p in enumerate(players):
         for j in p.road_edges():
             index = edges.index(j)
             roads_data[(72 * i) + index] = 1
     # Boolean Robber
     robber_data = [i == board.robber_hex().id() - 1 for i in range(19)]
-    data = np.hstack([hand_data, city_sett_data, roads_data, robber_data])
-    return data
+    return np.hstack([tile_data, city_sett_data, roads_data, robber_data])
+
+def get_feature_vec(board, players):
+    token_dict = {i: PROBABILITIES[i]*36 for i in PROBABILITIES}
+    res_types = [ResourceType.FOREST, ResourceType.ORE, ResourceType.BRICK, ResourceType.SHEEP, ResourceType.WHEAT]
+    hexes = board.hexes()
+    feature_data = np.zeros(24)
+    feature_data[:4] = [player.vp() for player in players]
+    for i, player in enumerate(players):
+        for node in player.settlement_nodes():
+            tiles = Board.get_adj_tile_ids_to_node(node)
+            for tile in tiles:
+                hexnode = hexes[tile]
+                if hexnode.resource() in res_types:
+                    feature_data[i*5 + res_types.index(hexnode.resource())] = token_dict[hexnode.token()]
+    return feature_data
+
 
 def make_model():
     model = Sequential()
@@ -92,19 +130,28 @@ def predict(model, session_batch):
     :param session_batch: A list of BATCH_SIZE sessions
     :return: A (BATCH_SIZE, 4) np array of the predicted values
     """
-    # TODO: Handle PASS, handle non-determinisitic
     predicted = np.zeros((len(session_batch), 4))
     for i, session in enumerate(session_batch):        
         legal_moves = session.get_possible_moves(session.current_player())
+        sessions, prob_dict = open_prediction_tree(legal_moves, session)
+        inputs = np.zeros((len(sessions), INPUT_SIZE))
+        win_status = np.zeros(len(sessions))
+        for j, sess in enumerate(sessions):
+            inputs[j,:] = session_to_input(sess)
+            win_status[j] = get_win_status(sess)
+        sess_preds = model.predict(inputs)
+        fix_rewards(sess_preds, win_status)
+        
+        # Calculating according to the expanded tree:
         move_preds = np.zeros((len(legal_moves), 4))
-        inputs = np.zeros((len(legal_moves), INPUT_SIZE))
-        win_status = np.zeros(len(legal_moves))
-        for i, move in enumerate(legal_moves):
-            new_sess = session.simulate_move(move)
-            inputs[i,:] = session_to_input(new_sess)
-            win_status[i] = get_win_status(new_sess)
-        move_preds = model.predict(inputs)
-        fix_rewards(move_preds, win_status)
+        for j, move in enumerate(prob_dict):
+            for sess_index in prob_dict[move]:
+                # print('\n\n')
+                # print(f'i is is {i}, move is {move}, sess_index is {sess_index}')
+                # print(f'sess_preds shape is {sess_preds.shape}')
+                # print(f'prob_dict is {prob_dict}')
+                move_preds[j,:] += prob_dict[move][sess_index] * sess_preds[sess_index,:]
+
         chosen_move_index = move_preds[:, 0].argmax()
         predicted[i, :] = move_preds[chosen_move_index, :]
     return predicted
@@ -113,25 +160,76 @@ def open_prediction_tree(moves, originel_session):
     """
     returns a tuple:
     session list,
-    dict from moves to dicts, each from probability to an index number of a session 
+    dict from moves to dicts, each from index number of a session to probability
     """
     sessions = []
     move_dict = {}
     for move in moves:
         # The nondeterministic moves are the most complicated
         if move.get_type() == MoveType.BUY_DEV:
-            pass
-        elif move.get_type() == MoveType.THROW:
-            pass
+            dev_dict = {}
+            percent_dict = get_dev_percents(originel_session)
+            for dev_type in percent_dict:
+                # Create a new session where the player have the card:
+                new_sess = deepcopy(originel_session)
+                get_player_order(new_sess)[0].receive_cards(Hand(dev_type))
+                sessions.append(new_sess)
+                dev_dict[len(sessions) - 1] = percent_dict[dev_type]
+            move_dict[move] = dev_dict
+        if isinstance(move, UseKnightDevMove):
+            res_dict = {}
+            percent_dict = get_knight_percents(move)
+            if percent_dict == None:
+                sessions.append(deepcopy(originel_session))
+                res_dict = {len(sessions) - 1: 1}
+            else:
+                for res in percent_dict:
+                    new_sess = deepcopy(originel_session)
+                    get_player_order(new_sess)[0].receive_cards(Hand(res))
+                    sessions.append(new_sess)
+                    res_dict[len(sessions) - 1] = percent_dict[res]
+            move_dict[move] = res_dict
         # pass is a special case - this is a bit awkward, but we just treat it as identical
         # to the current state
         elif move.get_type() == MoveType.PASS:
-            pass
+            sessions.append(deepcopy(originel_session))
+            move_dict[move] = {len(sessions) - 1: 1}
         # The deterministic are pretty simple - they have one outcome with weight of 100%
         else:
-            pass
+            sessions.append(originel_session.simulate_move(move))
+            move_dict[move] = {len(sessions) - 1: 1}
     return sessions, move_dict
 
+def get_dev_percents(session):
+    """
+    Returns a dict {percent: dev_card}
+    """
+    all_cards = deepcopy(DEV_COUNTS)
+    players = get_player_order(session)
+    # Remove the open cards of all the players
+    for player in players:
+        for used in player.used_dev_hand():
+            all_cards[used] -= 1
+    # Remove the closed card of the current player
+    for unused in player.dev_hand():
+            all_cards[unused] -= 1
+    cards_sum = sum(all_cards[i] for i in all_cards)
+    ret_dict = {}
+    for dev_type in [DevType.KNIGHT, DevType.VP, DevType.MONOPOLY, DevType.YEAR_OF_PLENTY, DevType.ROAD_BUILDING]:
+        ret_dict[dev_type] = all_cards[dev_type] / cards_sum
+    return ret_dict
+
+def get_knight_percents(knight_move):
+    """
+    Returns a dict {percent: resource_card} or None if we don't take from any player
+    """
+    if knight_move.take_from() == None:
+        return None
+    hand = knight_move.take_from().resource_hand()
+    percents = {}
+    for res_type in [ResourceType.FOREST, ResourceType.ORE, ResourceType.BRICK, ResourceType.SHEEP, ResourceType.WHEAT]:
+        percents[res_type] = len(hand.cards_of_type(res_type)) / len(hand)
+    return percents
 
 def fix_rewards(predicts, win_status):
     """
@@ -173,20 +271,23 @@ def train_batch(model, session_batch):
     model.fit(batch, pred, batch_size=batch_size)
 
 if __name__ == "__main__":
-    file = open('log.pkl', 'rb')
-    sessions = []
-    # Load the sessions:
-    while(True):
-        try:
-            sessions.append(pickle.load(file))
-        except EOFError:
-            break
-    # model = make_model()
+    logs = ['log1.pkl', 'log2.pkl', 'log3.pkl', 'log4.pkl', 'log5.pkl', 'log6.pkl', 'log7.pkl', 'log8.pkl', 'log9.pkl', 'log10.pkl']
     model = tf.keras.models.load_model("current_model")
-    for i in range(len(sessions) // BATCH_SIZE):
-        train_batch(model, sessions[i * BATCH_SIZE: (i + 1) * BATCH_SIZE])
-    # The leftovers (its important since we actually inject rewards only in the last session):
-    train_batch(model, sessions[(i + 1) * BATCH_SIZE:])
+    for log in logs:
+        file = open(logs, 'rb')
+        sessions = []
+        # Load the sessions:
+        while(True):
+            try:
+                sessions.append(pickle.load(file))
+            except EOFError:
+                break
+        # model = make_model()
+
+        for i in range(len(sessions) // BATCH_SIZE):
+            train_batch(model, sessions[i * BATCH_SIZE: (i + 1) * BATCH_SIZE])
+        # The leftovers (its important since we actually inject rewards only in the last session):
+        train_batch(model, sessions[(i + 1) * BATCH_SIZE:])
     model.save('current_model')
 
     
