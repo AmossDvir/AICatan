@@ -108,7 +108,7 @@ class Board:
         if location % 2 == 0:
             tile_coords = [location - 0x1, location + 0x1, location - 0x21]
         else:
-            tile_coords = [location + 0x20, location - 0x10, location - 0x12]
+            tile_coords = [location + 0x10, location - 0x10, location - 0x12]
         return [hexgrid.tile_id_from_coord(coord) - 1 for coord in tile_coords if coord in hexgrid.legal_tile_coords()]
 
     def build(self, buildable: Buildable.Buildable) -> None:
