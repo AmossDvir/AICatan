@@ -3,8 +3,8 @@ from typing import List
 from random import sample
 import Agent
 import Player
-from Agent import RandomAgent, OneMoveHeuristicAgent, HumanAgent, ProbabilityAgent, DeepAgent
-from Heuristics import vp_heuristic
+from Agent import RandomAgent, OneMoveHeuristicAgent, HumanAgent, ProbabilityAgent, ExpectimaxProbAgent
+from Heuristics import vp_heuristic, relative_everything_heuristic, everything_heuristic
 import argparse
 
 DEFAULT_NUM_PLAYERS = 4
@@ -12,13 +12,13 @@ RANDOM_AGENT = 'random'
 ONE_MOVE_AGENT = 'onemove'
 HUMAN_AGENT = 'human'
 PROBABILITY_AGENT = 'prob'
-DEEP_AGENT = 'deep'
+EXPROB_AGENT = 'exp'
 AGENTS = {
     RANDOM_AGENT: RandomAgent(),
     ONE_MOVE_AGENT: OneMoveHeuristicAgent(),
     HUMAN_AGENT: HumanAgent(),
     PROBABILITY_AGENT: ProbabilityAgent(),
-    DEEP_AGENT: DeepAgent()
+    EXPROB_AGENT: ExpectimaxProbAgent(relative_everything_heuristic)
 }
 DEFAULT_AGENTS = [RANDOM_AGENT]
 PLAYER_NAMES = ['Roy', 'Boaz', 'Oriane', 'Amoss']
@@ -68,13 +68,13 @@ def main(log: str = None, num_players: int = DEFAULT_NUM_PLAYERS, agents: List[s
 
 
 if __name__ == '__main__':
-    args = get_args()
-    main(**vars(args))
-    # a = Agent.RandomAgent()
-    # a2 = Agent.ProbabilityAgent()
-    # p1 = Player.Player(a, 'Oriane')
-    # p2 = Player.Player(a, 'Amoss')
+    # args = get_args()
+    # main(**vars(args))
+    a = Agent.RandomAgent()
+    a2 = Agent.ExpectimaxProbAgent(everything_heuristic)
+    p1 = Player.Player(a, 'Oriane')
+    p2 = Player.Player(a, 'Amoss')
     # p3 = Player.Player(a, 'Boaz')
-    # p4 = Player.Player(a2, 'Roy')
-    # session = GameSession.GameSession(None, p1, p2, p3, p4)
-    # session.run_game()
+    p4 = Player.Player(a2, 'Roy')
+    session = GameSession.GameSession(None, p1, p2, p4)
+    session.run_game()
