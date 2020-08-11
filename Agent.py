@@ -114,6 +114,8 @@ class OneMoveHeuristicAgent(Agent):
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         move_values = []
         for move in moves:
+            # if move.get_type() == Moves.MoveType.TRADE:
+
             new_state = state.simulate_move(move)
             # This is not good enough - simulate move will only choose one random outcome
             # when several are possible (like rolling the dice or buying dev card)
@@ -122,6 +124,7 @@ class OneMoveHeuristicAgent(Agent):
         argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
         moves = [moves[i] for i in argmax_vals_indices]
         move = RandomAgent().choose(moves, player, state)
+        # print(player.resource_hand())
         return move
 
 

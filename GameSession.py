@@ -76,7 +76,6 @@ class GameSession:
 
             # print(self.info())
             # TODO add option to use dev card before roll?
-
             self.__dice.roll()
             dprint('\n\n' + '*'*100)
             dprint('*' * 45, 'NEXT TURN', '*' * 44)
@@ -778,13 +777,25 @@ class GameSession:
                         dprint(f'[APPLY MOVE] player {player} chose {resources} as YOP resources')
 
             elif isinstance(move, Moves.TradeMove):
-                cards_received = move.gets()
-                player.receive_cards(cards_received)
-                self.__res_deck.remove(cards_received)
+                # get the cards:
 
+                cards_received = move.gets()
                 cards_given = move.gives()
-                player.throw_cards(cards_given)
-                self.__res_deck.insert(cards_given)
+                type_given = cards_given.get_cards_type()
+                type_received = cards_received.get_cards_type()
+
+
+
+                if type_received == type_given:
+                    dprint(f"player {player} tried to trade {type_given}'s with {type_received}")
+
+                else:
+
+                    player.receive_cards(cards_received)
+                    self.__res_deck.remove(cards_received)
+
+                    player.throw_cards(cards_given)
+                    self.__res_deck.insert(cards_given)
 
                 if printout:
                     dprint(f'[APPLY MOVE] player {player} traded {cards_given} for {cards_received}')
@@ -928,4 +939,7 @@ class GameSession:
                  for node in self.__buildable_nodes(player, pre_game)]
         # print('POSSIBLE SETTLE MOVES', moves)
         return moves
+
+    def get_dice(self):
+        return self.__dice
 

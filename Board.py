@@ -13,7 +13,7 @@ from Dice import PROBABILITIES
 class Board:
     COLORS = {
         'TEAL': '\033[96m',
-        'YELLOW': '\033[93m',
+        'YELLOW': '\033[33m',
         'RED': '\033[91m',
         'BLUE': '\033[94m',
         'END': '\033[0m'

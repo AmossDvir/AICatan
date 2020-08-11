@@ -6,7 +6,7 @@ import Dice
 
 
 
-VP_WEIGHT = 1  # victory points heuristic weight
+VP_WEIGHT = 2  # victory points heuristic weight
 PREFER_RESOURCES_WEIGHT = 0.2
 HARBOURS_WEIGHT = 0.8
 DIVERSITY_WEIGHT = 0.5
@@ -57,7 +57,7 @@ def negative_vp_heuristic(session: GameSession, player: Player):
     return negative_of(vp_heuristic, session, player)
 
 
-def negative_of(heuristic: Callable[[GameSession, Player], float], session: GameSession, player: Player) -> float:
+def negative_of(heuristic, session: GameSession, player: Player) -> float:
     """:returns the negative value of given heuristic based on how good opponents values are for heuristic"""
     opp_vals = 0
     for p in session.players():
@@ -67,7 +67,7 @@ def negative_of(heuristic: Callable[[GameSession, Player], float], session: Game
     return - opp_vals
 
 
-def relative_of(heuristic: Callable[[GameSession, Player], float], session: GameSession, player: Player) -> float:
+def relative_of(heuristic, session: GameSession, player: Player) -> float:
     """:returns ratio of player's heuristic value to average opponents value on given heuristic"""
     my_val = 0
     opp_vals = []
@@ -256,8 +256,8 @@ def main_heuristic(session:GameSession,player:Player):
            __settles+ __cities + __build + __dev +\
                   __won_game + __diversity + __enough_res_to_buy + __prefer
 
-    __builder_characteristic = __build + __roads+ __cities + __won_game # todo: pretty good combination
+    __builder_characteristic = __vp + __build + __roads+ __cities + __won_game # todo: pretty good combination
 
 
-    return __enough_res_to_buy + __build + __settles + __roads
+    return __builder_characteristic
     # return __diversity + __build + __won_game + __dev

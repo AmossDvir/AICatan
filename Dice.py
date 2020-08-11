@@ -38,3 +38,4 @@ class Dice:
 
     def info(self) -> str:
         return f'[DICE] current roll = {self.get_last_roll()}, sum = {self.sum()}'
+
