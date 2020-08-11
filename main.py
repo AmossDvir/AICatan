@@ -18,7 +18,7 @@ AGENTS = {
     ONE_MOVE_AGENT: Agent.OneMoveHeuristicAgent(),
     HUMAN_AGENT: Agent.HumanAgent(),
     PROBABILITY_AGENT: Agent.ProbabilityAgent(),
-    EXPROB_AGENT: Agent.ExpectimaxProbAgent(relative_everything_heuristic)
+    EXPROB_AGENT: Agent.ExpectimaxProbAgent(Heuristics.relative_everything_heuristic)
 }
 DEFAULT_AGENTS = [RANDOM_AGENT]
 PLAYER_NAMES = ['Roy', 'Boaz', 'Oriane', 'Amoss']
