@@ -34,6 +34,9 @@ class GameSession:
     def __init__(self, log: str = None, *players: Player.Player):
         assert Consts.MIN_PLAYERS <= len(players) <= Consts.MAX_PLAYERS
 
+        # winning stats
+        self.winning_player = None
+
         # game board & dice #
         self.__board = Board.Board()
         self.__dice = Dice.Dice()
@@ -141,7 +144,8 @@ class GameSession:
             dprint(self.status_table())
             if self.__is_game_over():
                 self.__phase = GamePhase.GAME_OVER
-                print(self.status_table())
+                self.winning_player = curr_player
+                # print(self.status_table())
                 print(f'\n\n\nGAME OVER - player {curr_player} won!!!')
                 break
 

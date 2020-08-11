@@ -155,7 +155,7 @@ class DeepAgent(Agent):
         current_moves = moves
         while current_moves:
             current_choice = choice(current_moves)
-            print('\n\n\nCURR PLAYER =', state.sim_current_player())
+            print('\n\n\nCURR PLAYER =', state.sim_curre7nt_player())
             print('CURR MOVES =')
             print(*(m.info() for m in current_moves), sep='\n')
             print('\nCHOICE =', current_choice.info())
