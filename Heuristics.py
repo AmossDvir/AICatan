@@ -6,9 +6,16 @@ import Dice
 
 
 
-VP_WEIGHT = 0  # victory points heuristic weight
-PREFER_RESOURCES_WEIGHT = 0
-
+VP_WEIGHT = 1  # victory points heuristic weight
+PREFER_RESOURCES_WEIGHT = 0.2
+HARBOURS_WEIGHT = 0.8
+DIVERSITY_WEIGHT = 0.5
+BUILD_IN_GOOD_PLACES_WEIGHT = 5
+ROADS_WEIGHT = 0.6
+SETTLES_WEIGHT = 0.7
+CITIES_WEIGHT = 2.5
+DEV_CARDS_WEIGHT = 2
+ENOUGH_RES_TO_BUY = 1
 
 def find_sim_player(session: GameSession, player: Player) -> Player:
     # find the player's turn for the current session simulation
@@ -34,11 +41,11 @@ def harbors_heuristic(session: GameSession, player: Player):
     """
     __sim_player = find_sim_player(session, player)
     player.harbors()
-    return len(__sim_player.harbors())
+    return len(__sim_player.harbors())/9
 
 
 def game_won_heuristic(session: GameSession, player: Player):
-    return float('inf') if session.winner() == player else 0
+    return float('inf') if session.winning_player == player else 0
 
 
 def relative_vp_heuristic(session: GameSession, player: Player):
@@ -100,7 +107,7 @@ def prefer_resources_in_each_part(session: GameSession, player: Player):
     __calc_score = (100 * (0.8 * __num_forest + 1.2 * __num_bricks + 0.3 * __num_sheep + 0.3 * __num_wheat) / (
         (__num_buildings)) + (__num_buildings) * (0.75 * __num_sheep + 0.75 * __num_wheat + 1.5 * __num_ore))
     # print("resources heuristic: " , __calc_score)
-    return __calc_score / 100
+    return __calc_score / 150
 
 def roads_heuristic(session:GameSession,player:Player):
     __sim_player = find_sim_player(session,player)
@@ -108,7 +115,19 @@ def roads_heuristic(session:GameSession,player:Player):
 
 def settles_heuristic(session:GameSession,player:Player):
     __sim_player = find_sim_player(session,player)
-    return __sim_player.num_settlements()/5 # 5 settlements max per player
+    __settles = __sim_player.num_settlements()
+    if __settles >= 5:
+        return 0
+    return __settles/5 # 5 settlements max per player
+
+def cities_heuristic(session:GameSession,player:Player):
+    __sim_player = find_sim_player(session,player)
+    return __sim_player.num_cities()/4 # 5 settlements max per player
+
+def dev_cards_heuristic(session:GameSession,player:Player):
+    __sim_player = find_sim_player(session,player)
+    return __sim_player.dev_hand().size()/25
+
 
 
 def resources_diversity_heuristic(session: GameSession, player: Player):
@@ -121,18 +140,19 @@ def resources_diversity_heuristic(session: GameSession, player: Player):
     __sim_player = find_sim_player(session, player)
     __resources = [__sim_player.resource_hand().cards_of_type(resource) for resource in Consts.ResourceType]
     __num_types = 0
-    __num_res = 0
-    # print("--------------------")
     for res in __resources[0:5]:
-        # print(res)
         if res:
             __num_types += 1
-        __num_res += len(res)
-    # print(__num_res * __num_types*10)
-    # print("--------------------")
-    return __num_res * __num_types/3
+    return __num_types/5
 
 def build_in_good_places(session: GameSession, player: Player):
+    """
+    prefer building in more attractive places
+    :param session:
+    :param player:
+    :return: the number of tiles the player has
+    multiply by the token's probability
+    """
     __sim_player = find_sim_player(session, player)
     __board = session.board()
     # print(__sim_player.settlement_nodes())
@@ -148,6 +168,25 @@ def build_in_good_places(session: GameSession, player: Player):
             tiles_types.add(__board.hexes()[tile].resource())
             tiles_prob += Dice.PROBABILITIES[__board.hexes()[tile].token()]
     return (num_tiles*len(tiles_types)*tiles_prob)/227.5 # 227.5 is the bound
+
+def enough_res_to_buy(session: GameSession, player: Player):
+    __sim_player = find_sim_player(session, player)
+    __hand = __sim_player.resource_hand()
+    __road_score = 0
+    __settle_score = 0
+    __city_score = 0
+    __dev_card_score = 0
+
+    if __hand.contains(Consts.COSTS[Consts.PurchasableType.ROAD]):
+        __road_score += 0.5
+    if __hand.contains(Consts.COSTS[Consts.PurchasableType.SETTLEMENT]):
+        __settle_score += 1
+    if __hand.contains(Consts.COSTS[Consts.PurchasableType.CITY]):
+        __city_score += 1.5
+    if __hand.contains(Consts.COSTS[Consts.PurchasableType.DEV_CARD]):
+        __dev_card_score += 1
+    # print(__hand)
+    return (__road_score + __settle_score + __city_score + __dev_card_score)/3
 
 
 
@@ -187,21 +226,38 @@ def relative_everything_heuristic(session: GameSession, player: Player) -> float
 
 
 def main_heuristic(session:GameSession,player:Player):
-    __vp = vp_heuristic(session,player)
-    __harbours = harbors_heuristic(session,player)
-    __prefer = prefer_resources_in_each_part(session,player)
-    __roads = roads_heuristic(session,player)
-    __settles = settles_heuristic(session,player)
-    __diversity = resources_diversity_heuristic(session,player)
-    __build = build_in_good_places(session,player)
+    __vp = vp_heuristic(session,player) * VP_WEIGHT
+    __harbours = harbors_heuristic(session,player) * HARBOURS_WEIGHT
+    __prefer = prefer_resources_in_each_part(session,player) * PREFER_RESOURCES_WEIGHT # todo: not good at all
+    __roads = roads_heuristic(session,player)*ROADS_WEIGHT
+    __settles = settles_heuristic(session,player) * SETTLES_WEIGHT
+    __cities = cities_heuristic(session,player) * CITIES_WEIGHT
+    __diversity = resources_diversity_heuristic(session,player)*DIVERSITY_WEIGHT
+    __build = build_in_good_places(session,player)*BUILD_IN_GOOD_PLACES_WEIGHT
+    __dev = dev_cards_heuristic(session,player) * DEV_CARDS_WEIGHT
+    __won_game = game_won_heuristic(session,player)
+    __enough_res_to_buy = enough_res_to_buy(session,player)*ENOUGH_RES_TO_BUY
 
-    print("////////////////////")
-    print(str.title(f"victory point: {__vp}\nharbours: \
-{__harbours}\nroads: {__roads}\nsettlements: {__settles}\nbuild in good places: {__build}"))
-    print("////////////////////")
+    #
+    #     print("////////////////////")
+    #     print(session.board())
+    #     print("Heuristics' Scores: ")
+    #     print("prefer: ",__prefer)
+    #     print(str.title(f"victory point: {__vp}\nharbours: \
+    # {__harbours}\nroads: {__roads}\nsettlements: {__settles}\ndev cards: \
+    # {__dev}\ncities: {__cities}\nbuild in good places: {__build}\ndiversity: \
+    # {__diversity}\nenough res to buy: {__enough_res_to_buy}"))
+    #     print("sum score: ",__sum_score)
+    #     print("////////////////////")
 
-    return __vp + __harbours + \
+    # todo: altogether, needs tuning...
+    __sum_score = __vp + __harbours + \
            __roads + \
-           __settles + __build
+           __settles+ __cities + __build + __dev +\
+                  __won_game + __diversity + __enough_res_to_buy + __prefer
+
+    __builder_characteristic = __build + __roads+ __cities + __won_game # todo: pretty good combination
 
 
+    return __enough_res_to_buy + __build + __settles + __roads
+    # return __diversity + __build + __won_game + __dev
