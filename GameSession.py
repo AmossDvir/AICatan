@@ -35,7 +35,7 @@ class GameSession:
         assert Consts.MIN_PLAYERS <= len(players) <= Consts.MAX_PLAYERS
 
         # winning stats
-        self.winning_player = None
+        self.__winning_player = None
 
         # game board & dice #
         self.__board = Board.Board()
@@ -52,16 +52,19 @@ class GameSession:
         # development cards deck #
         self.__dev_deck = Hand.Hand(*Consts.DEV_DECK)
 
-        # misc #
+        # phase misc #
         self.__dev_cards_bought_this_turn = Hand.Hand()
         self.__curr_turn_idx = 0
         self.__num_turns_played = 0
         self.__phase = GamePhase.START
-        self.__curr_player_sim = None
-        self.__pre_game_round = None
+        self.__curr_player_sim = self.__turn_order[0]
+        self.__pre_game_round = 1
         self.__pre_game_settlement_node = None
         self.__num_to_throw_sim = None
         self.__curr_throw_sim = None
+        self.__vp_earned_this_phase = 0
+        self.__possible_moves_this_phase = []
+        self.__illegal_move = False
 
         # Saving a log of game sessions:
         self.__logger = GameLogger.GameLogger(log) if log is not None else None
@@ -71,10 +74,11 @@ class GameSession:
 
         for curr_player in self.__turn_generator(self.__num_players):
             print(self.__num_turns_played)
+            self.__vp_earned_this_phase = 0
             self.__curr_player_sim = curr_player
             self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
 
-            # print(self.info())
+            # print(self.status_table())
             # TODO add option to use dev card before roll?
 
             self.__dice.roll()
@@ -94,8 +98,12 @@ class GameSession:
                         self.__throw_player = player
                         self.__throw_player_hand_size = player_hand_size - (player_hand_size // 2)
                         for _ in range(player_hand_size // 2):
-                            throw_move = player.choose(self.__get_possible_throw_moves(player, 1),
-                                                       deepcopy(self))
+                            self.__possible_moves_this_phase = self.__get_possible_throw_moves(player, 1)
+                            throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                            while throw_move not in self.__possible_moves_this_phase:
+                                self.__illegal_move = True
+                                throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                            self.__illegal_move = False
                             cards_thrown = throw_move.throws()
                             dprint(f'[RUN GAME] player {player} had too many cards ({player_hand_size}), '
                                    f'he threw {cards_thrown}')
@@ -104,8 +112,13 @@ class GameSession:
 
                 # move robber
                 self.__phase = GamePhase.ROBBER_PLACE
-                knight_move = curr_player.choose(
-                    self.__get_possible_knight_moves(curr_player, robber=True), deepcopy(self))
+                self.__possible_moves_this_phase = self.__get_possible_knight_moves(curr_player, robber=True)
+                knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                while knight_move not in self.__possible_moves_this_phase:
+                    self.__illegal_move = True
+                    knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                self.__illegal_move = False
+
                 robber_hex = knight_move.hex_id()
                 opp = knight_move.take_from()
                 self.__robber_protocol(curr_player, robber_hex, opp)
@@ -122,34 +135,61 @@ class GameSession:
 
             # query player for move #
             self.__phase = GamePhase.MAKE_MOVE
-            moves_available = self.get_possible_moves(curr_player)
+            self.__possible_moves_this_phase = self.get_possible_moves(curr_player)
+            moves_available = self.__possible_moves_this_phase
             dprint(f'[RUN GAME] player {curr_player} can play:\n')
             dprint('\n'.join(m.info() for m in moves_available) + '\n')
             move_to_play = curr_player.choose(moves_available, deepcopy(self))
+            while move_to_play not in moves_available:
+                self.__illegal_move = True
+                move_to_play = curr_player.choose(moves_available, deepcopy(self))
+            self.__illegal_move = False
+
             dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
+
+            vp_before = curr_player.vp()
             self.__apply_move(move_to_play)
+            vp_after = curr_player.vp()
+            self.__vp_earned_this_phase = vp_after - vp_before
+
             if self.__logger:
                 self.__logger.write_session(deepcopy(self))
 
             while move_to_play.get_type() != Moves.MoveType.PASS:
-                moves_available = self.get_possible_moves(curr_player)
+                self.__possible_moves_this_phase = self.get_possible_moves(curr_player)
+                moves_available = self.__possible_moves_this_phase
                 dprint(f'[RUN GAME] player {curr_player} can play:\n')
                 dprint('\n'.join(m.info() for m in moves_available) + '\n')
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
+                while move_to_play not in moves_available:
+                    self.__illegal_move = True
+                    move_to_play = curr_player.choose(moves_available, deepcopy(self))
+                self.__illegal_move = False
                 dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
+
+                vp_before = curr_player.vp()
                 self.__apply_move(move_to_play)
+                vp_after = curr_player.vp()
+                self.__vp_earned_this_phase = vp_after - vp_before
+
                 if self.__logger:
                     self.__logger.write_session(deepcopy(self))
 
             dprint(self.board())
             dprint(self.status_table())
-            if self.__is_game_over():
+            # print(self.status_table())
+            if self.is_game_over():
                 self.__phase = GamePhase.GAME_OVER
-                self.winning_player = curr_player
-                # print(self.status_table())
+                self.__possible_moves_this_phase = []
+                print(self.board())
+                print(self.status_table())
                 print(f'\n\n\nGAME OVER - player {curr_player} won!!!')
-                print("Game Ended After ",self.__num_turns_played," Turns")
+                print("Game Ended After", self.__num_turns_played, "Turns")
                 break
+
+    def winner(self) -> Union[Player, None]:
+        if self.is_game_over():
+            return max([p for p in self.players()], key=lambda p: p.vp())
 
     def current_player(self) -> Player.Player:
         return self.players()[self.curr_turn()]
@@ -178,6 +218,9 @@ class GameSession:
 
     def longest_road_length(self) -> int:
         return max(self.board().road_len(p) for p in self.players())
+
+    def vp_earned_this_phase(self) -> int:
+        return self.__vp_earned_this_phase
 
     def get_possible_moves(self, player: Player.Player) -> List[Moves.Move]:
         moves = []
@@ -353,13 +396,16 @@ class GameSession:
     def __make_move_sim(self, move_to_play: Moves.Move) -> List[Moves.Move]:
         curr_player = self.__curr_player_sim
 
+        vp_before = curr_player.vp()
         self.__apply_move(move_to_play)
+        vp_after = curr_player.vp()
+        self.__vp_earned_this_phase = vp_after - vp_before
 
         if move_to_play.get_type() != Moves.MoveType.PASS:
             moves_available = self.get_possible_moves(curr_player)
             return moves_available
 
-        elif self.__is_game_over():
+        elif self.is_game_over():
             self.__phase = GamePhase.GAME_OVER
             dprint(f'\n\n\nGAME OVER - player {curr_player} won!!!')
             return []
@@ -425,7 +471,20 @@ class GameSession:
                                for edge in adj_edges]
         return possible_road_moves
 
-    def simulate_game(self, move_to_play: Moves.Move) -> List[Moves.Move]:
+    def __start_sim(self) -> List[Moves.BuildMove]:
+        _round = self.__pre_game_round
+        curr_player = self.__curr_player_sim
+        self.__phase = GamePhase.PRE_GAME_SETTLEMENT
+        self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player, pre_game=True)
+        return self.__possible_moves_this_phase
+
+    def got_illegal_move(self) -> bool:
+        return self.__illegal_move
+
+    def simulate_game(self, move_to_play: Moves.Move = None) -> List[Moves.Move]:
+        if self.__phase == GamePhase.START:
+            return self.__start_sim()
+
         if self.__phase == GamePhase.PRE_GAME_SETTLEMENT:
             assert isinstance(move_to_play, Moves.BuildMove)
             return self.__pre_game_settlement_sim(move_to_play)
@@ -601,8 +660,12 @@ class GameSession:
                 self.__curr_player_sim = curr_player
                 # get player's choice of settlement
                 self.__phase = GamePhase.PRE_GAME_SETTLEMENT
-                build_settlement_move = curr_player.choose(
-                    self.__get_possible_build_settlement_moves(curr_player, pre_game=True), deepcopy(self))
+                self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player, pre_game=True)
+                build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                while build_settlement_move not in self.__possible_moves_this_phase:
+                    self.__illegal_move = True
+                    build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                self.__illegal_move = False
 
                 # add new settlement to game
                 settlement_node = build_settlement_move.at()
@@ -616,9 +679,14 @@ class GameSession:
                 # get player's choice of road
                 self.__phase = GamePhase.PRE_GAME_ROAD
                 adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
-                possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
+                self.__possible_moves_this_phase = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
                                        for edge in adj_edges]
+                possible_road_moves = self.__possible_moves_this_phase
                 build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
+                while build_adj_road_move not in self.__possible_moves_this_phase:
+                    self.__illegal_move = True
+                    build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
+                self.__illegal_move = False
 
                 # add new road to game
                 road_edge = build_adj_road_move.at()
@@ -639,8 +707,12 @@ class GameSession:
                 dprint(self.board())
                 dprint(self.status_table())
 
-    def __is_game_over(self) -> bool:
+
+    def is_game_over(self) -> bool:
         return any(player.vp() >= Consts.WINNING_VP for player in self.players())
+
+    def possible_moves_this_phase(self) -> List[Moves.Move]:
+        return self.__possible_moves_this_phase
 
     def __robber_protocol(self, curr_player: Player.Player, robber_hex_id: int, opp: Player.Player,
                           printout=True, mock=False) -> None:
@@ -685,6 +757,11 @@ class GameSession:
         player = move.player()
         saved_state = deepcopy(self)
         try:
+            if isinstance(move, Moves.ThrowMove):
+                card = move.throws()
+                self.__res_deck.insert(card)
+                player.resource_hand().remove(card)
+
             if isinstance(move, Moves.BuyDevMove):
                 dev_cost = Consts.COSTS.get(Consts.PurchasableType.DEV_CARD)
                 player.throw_cards(dev_cost)
@@ -815,6 +892,44 @@ class GameSession:
     @staticmethod
     def __has_remaining_roads(player: Player.Player) -> bool:
         return player.num_roads() < Consts.MAX_ROADS_PER_PLAYER
+
+    def potential_probability_score(self, player: Player) -> float:
+        def get_player_nodes(player):
+            all_nodes = []
+            for edge in player.road_edges():
+                all_nodes.extend(hexgrid.nodes_touching_edge(edge))
+            return all_nodes
+
+        def get_almost_buildable_nodes(player):
+            player_nodes = get_player_nodes(player)
+            adj_to_player_nodes = set()
+            for node in player_nodes:
+                for adj_node in self.board().get_adj_nodes_to_node(node):
+                    if self.__is_distant_node(adj_node) and adj_node not in player_nodes:
+                        adj_to_player_nodes.add(adj_node)
+            return list(adj_to_player_nodes)
+
+        prob_score = 0
+        buildable_nodes = self.__buildable_nodes(player)
+
+        almost_buildable_nodes = get_almost_buildable_nodes(player)
+        almost_buildable_coeff = 0.3
+        buildable_coeff = 0.6
+        hex_ids = []
+        for node in buildable_nodes:
+            hex_ids.extend(self.board().get_adj_tile_ids_to_node(node))
+        for token in [self.board().hexes()[h_id].token() for h_id in hex_ids]:
+            if token > 0:
+                prob_score += buildable_coeff * Dice.PROBABILITIES[token]
+
+        hex_ids = []
+        for node in almost_buildable_nodes:
+            hex_ids.extend(self.board().get_adj_tile_ids_to_node(node))
+        for token in [self.board().hexes()[h_id].token() for h_id in hex_ids]:
+            if token > 0:
+                prob_score += almost_buildable_coeff * Dice.PROBABILITIES[token]
+
+        return prob_score
 
     def __buildable_nodes(self, player: Player.Player, pre_game: bool = False) -> List[int]:
         player_nodes = set()
