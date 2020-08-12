@@ -62,6 +62,7 @@ class GameSession:
         self.__pre_game_settlement_node = None
         self.__num_to_throw_sim = None
         self.__curr_throw_sim = None
+        self.__possible_moves_this_phase = []
 
         # Saving a log of game sessions:
         self.__logger = GameLogger.GameLogger(log) if log is not None else None
@@ -93,8 +94,8 @@ class GameSession:
                         self.__throw_player = player
                         self.__throw_player_hand_size = player_hand_size - (player_hand_size // 2)
                         for _ in range(player_hand_size // 2):
-                            throw_move = player.choose(self.__get_possible_throw_moves(player, 1),
-                                                       deepcopy(self))
+                            self.__possible_moves_this_phase = self.__get_possible_throw_moves(player, 1)
+                            throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
                             cards_thrown = throw_move.throws()
                             dprint(f'[RUN GAME] player {player} had too many cards ({player_hand_size}), '
                                    f'he threw {cards_thrown}')
@@ -103,8 +104,8 @@ class GameSession:
 
                 # move robber
                 self.__phase = GamePhase.ROBBER_PLACE
-                knight_move = curr_player.choose(
-                    self.__get_possible_knight_moves(curr_player, robber=True), deepcopy(self))
+                self.__possible_moves_this_phase = self.__get_possible_knight_moves(curr_player, robber=True)
+                knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
                 robber_hex = knight_move.hex_id()
                 opp = knight_move.take_from()
                 self.__robber_protocol(curr_player, robber_hex, opp)
@@ -121,7 +122,8 @@ class GameSession:
 
             # query player for move #
             self.__phase = GamePhase.MAKE_MOVE
-            moves_available = self.get_possible_moves(curr_player)
+            self.__possible_moves_this_phase = self.get_possible_moves(curr_player)
+            moves_available = self.__possible_moves_this_phase
             dprint(f'[RUN GAME] player {curr_player} can play:\n')
             dprint('\n'.join(m.info() for m in moves_available) + '\n')
             move_to_play = curr_player.choose(moves_available, deepcopy(self))
@@ -131,7 +133,8 @@ class GameSession:
                 self.__logger.write_session(deepcopy(self))
 
             while move_to_play.get_type() != Moves.MoveType.PASS:
-                moves_available = self.get_possible_moves(curr_player)
+                self.__possible_moves_this_phase = self.get_possible_moves(curr_player)
+                moves_available = self.__possible_moves_this_phase
                 dprint(f'[RUN GAME] player {curr_player} can play:\n')
                 dprint('\n'.join(m.info() for m in moves_available) + '\n')
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
@@ -144,6 +147,7 @@ class GameSession:
             dprint(self.status_table())
             if self.__is_game_over():
                 self.__phase = GamePhase.GAME_OVER
+                self.__possible_moves_this_phase = []
                 self.winning_player = curr_player
                 # print(self.status_table())
                 print(f'\n\n\nGAME OVER - player {curr_player} won!!!')
@@ -424,6 +428,13 @@ class GameSession:
                                for edge in adj_edges]
         return possible_road_moves
 
+    def __start_sim(self) -> List[Moves.BuildMove]:
+        _round = self.__pre_game_round
+        curr_player = self.__curr_player_sim
+        self.__phase = GamePhase.PRE_GAME_SETTLEMENT
+        self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player, pre_game=True)
+        return self.__possible_moves_this_phase
+
     def simulate_game(self, move_to_play: Moves.Move) -> List[Moves.Move]:
         if self.__phase == GamePhase.PRE_GAME_SETTLEMENT:
             assert isinstance(move_to_play, Moves.BuildMove)
@@ -600,8 +611,9 @@ class GameSession:
                 self.__curr_player_sim = curr_player
                 # get player's choice of settlement
                 self.__phase = GamePhase.PRE_GAME_SETTLEMENT
-                build_settlement_move = curr_player.choose(
-                    self.__get_possible_build_settlement_moves(curr_player, pre_game=True), deepcopy(self))
+                self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player,
+                                                                                              pre_game=True)
+                build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
 
                 # add new settlement to game
                 settlement_node = build_settlement_move.at()
@@ -615,8 +627,10 @@ class GameSession:
                 # get player's choice of road
                 self.__phase = GamePhase.PRE_GAME_ROAD
                 adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
-                possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
-                                       for edge in adj_edges]
+                self.__possible_moves_this_phase = [
+                    Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
+                    for edge in adj_edges]
+                possible_road_moves = self.__possible_moves_this_phase
                 build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
 
                 # add new road to game
@@ -640,6 +654,9 @@ class GameSession:
 
     def __is_game_over(self) -> bool:
         return any(player.vp() >= Consts.WINNING_VP for player in self.players())
+
+    def possible_moves_this_phase(self) -> List[Moves.Move]:
+        return self.__possible_moves_this_phase
 
     def __robber_protocol(self, curr_player: Player.Player, robber_hex_id: int, opp: Player.Player,
                           printout=True, mock=False) -> None:
