@@ -15,7 +15,7 @@ from Hand import Hand
 from keras.models import Sequential
 from keras.layers import Dense
 
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 INPUT_SIZE = 698
 # Overall size = 698:
 
@@ -108,7 +108,7 @@ def get_feature_vec(board, players):
     feature_data[:4] = [player.vp() for player in players]
     for i, player in enumerate(players):
         for node in player.settlement_nodes():
-            tiles = Board.get_adj_tile_ids_to_node(node)
+            tiles = board.get_adj_tile_ids_to_node(node)
             for tile in tiles:
                 hexnode = hexes[tile]
                 if hexnode.resource() in res_types:
@@ -133,28 +133,35 @@ def predict(model, session_batch):
     predicted = np.zeros((len(session_batch), 4))
     for i, session in enumerate(session_batch):        
         legal_moves = session.get_possible_moves(session.current_player())
-        sessions, prob_dict = open_prediction_tree(legal_moves, session)
-        inputs = np.zeros((len(sessions), INPUT_SIZE))
-        win_status = np.zeros(len(sessions))
-        for j, sess in enumerate(sessions):
-            inputs[j,:] = session_to_input(sess)
-            win_status[j] = get_win_status(sess)
-        sess_preds = model.predict(inputs)
-        fix_rewards(sess_preds, win_status)
-        
-        # Calculating according to the expanded tree:
-        move_preds = np.zeros((len(legal_moves), 4))
-        for j, move in enumerate(prob_dict):
-            for sess_index in prob_dict[move]:
-                # print('\n\n')
-                # print(f'i is is {i}, move is {move}, sess_index is {sess_index}')
-                # print(f'sess_preds shape is {sess_preds.shape}')
-                # print(f'prob_dict is {prob_dict}')
-                move_preds[j,:] += prob_dict[move][sess_index] * sess_preds[sess_index,:]
+        move_preds = get_move_predictions(model, legal_moves, session)
 
         chosen_move_index = move_preds[:, 0].argmax()
         predicted[i, :] = move_preds[chosen_move_index, :]
     return predicted
+
+def get_move_predictions(model, legal_moves, session):
+    """
+    Returns a np array of shape (len(moves), 4)
+    """
+    sessions, prob_dict = open_prediction_tree(legal_moves, session)
+    inputs = np.zeros((len(sessions), INPUT_SIZE))
+    win_status = np.zeros(len(sessions))
+    for j, sess in enumerate(sessions):
+        inputs[j,:] = session_to_input(sess)
+        win_status[j] = get_win_status(sess)
+    sess_preds = model.predict(inputs)
+    fix_rewards(sess_preds, win_status)
+    
+    # Calculating according to the expanded tree:
+    move_preds = np.zeros((len(legal_moves), 4))
+    for j, move in enumerate(prob_dict):
+        for sess_index in prob_dict[move]:
+            # print('\n\n')
+            # print(f'i is is {i}, move is {move}, sess_index is {sess_index}')
+            # print(f'sess_preds shape is {sess_preds.shape}')
+            # print(f'prob_dict is {prob_dict}')
+            move_preds[j,:] += prob_dict[move][sess_index] * sess_preds[sess_index,:]
+    return move_preds
 
 def open_prediction_tree(moves, originel_session):
     """
@@ -226,6 +233,8 @@ def get_knight_percents(knight_move):
     if knight_move.take_from() == None:
         return None
     hand = knight_move.take_from().resource_hand()
+    if len(hand) == 0:
+        return None
     percents = {}
     for res_type in [ResourceType.FOREST, ResourceType.ORE, ResourceType.BRICK, ResourceType.SHEEP, ResourceType.WHEAT]:
         percents[res_type] = len(hand.cards_of_type(res_type)) / len(hand)
@@ -271,10 +280,10 @@ def train_batch(model, session_batch):
     model.fit(batch, pred, batch_size=batch_size)
 
 if __name__ == "__main__":
-    logs = ['log1.pkl', 'log2.pkl', 'log3.pkl', 'log4.pkl', 'log5.pkl', 'log6.pkl', 'log7.pkl', 'log8.pkl', 'log9.pkl', 'log10.pkl']
     model = tf.keras.models.load_model("current_model")
-    for log in logs:
-        file = open(logs, 'rb')
+    for i in range(100):
+        print(f'\n\nOpening file log{i}.pkl:\n')
+        file = open(f'log{i}.pkl', 'rb')
         sessions = []
         # Load the sessions:
         while(True):
@@ -288,7 +297,7 @@ if __name__ == "__main__":
             train_batch(model, sessions[i * BATCH_SIZE: (i + 1) * BATCH_SIZE])
         # The leftovers (its important since we actually inject rewards only in the last session):
         train_batch(model, sessions[(i + 1) * BATCH_SIZE:])
-    model.save('current_model')
+        model.save('current_model')
 
     
 

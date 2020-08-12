@@ -8,6 +8,10 @@ from random import choice
 from Heuristics import *
 from copy import deepcopy
 
+import tensorflow as tf
+from keras.models import Sequential
+from keras.layers import Dense
+from DQN import get_move_predictions
 
 class AgentType(Enum):
     RANDOM = 0
@@ -206,16 +210,12 @@ class ExpectimaxProbAgent(Agent):
 
 
 class DQNAgent(Agent):
+    network = tf.keras.models.load_model("current_model")
+
     def __init__(self):
         super().__init__(AgentType.DQN)
-        # I'm importing here so the other agents will be able to run without tf and keras
-        import numpy as np
-        import tensorflow as tf
-        from keras.models import Sequential
-        from keras.layers import Dense
-        from DQN import predict
-        self.network = tf.keras.models.load_model("current_model")
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
-        predicts = predict(self.network, [state])
-        
+        move_preds = get_move_predictions(DQNAgent.network, moves, state)
+        chosen_move_index = move_preds[:, 0].argmax()
+        return moves[chosen_move_index]
