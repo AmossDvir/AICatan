@@ -1,11 +1,12 @@
 import GameSession
 import Player
-from typing import Callable
 import GameConstants as Consts
 import Dice
+from copy import deepcopy
+from itertools import combinations
 
 
-
+INF = 100000
 VP_WEIGHT = 2  # victory points heuristic weight
 PREFER_RESOURCES_WEIGHT = 0.2
 HARBOURS_WEIGHT = 0.8
@@ -199,30 +200,103 @@ def probability_score_heuristic(session: GameSession, player: Player) -> float:
 def road_len_heuristic(session: GameSession, player: Player) -> float:
     return session.board().road_len(player) / 15
 
+def rel_max_everything(session, player):
+    return relative_to_max_opp_of(everything_heuristic, session, player)
+
+
+def relative_to_max_opp_of(heuristic, session, player):
+    my_player = find_sim_player(session, player)
+    my_score = heuristic(session, my_player)
+    max_opp_score = 0
+    for p in session.players():
+        if p != my_player:
+            opp_score = heuristic(session, p)
+            max_opp_score = max(max_opp_score, opp_score)
+    if max_opp_score == 0:
+        return INF if my_score > 0 else 0
+
+    return my_score / max_opp_score
+
+
+def hand_size_heuristic(session, player):
+    OPTIMAL_HAND_SIZE = 7
+    if player.resource_hand_size() >= OPTIMAL_HAND_SIZE:
+        return 1
+    else:
+        return player.resource_hand_size() / OPTIMAL_HAND_SIZE
+
+def hand_diversity_heuristic(session, player):
+    MAX_RESOURCE_TYPES = len(Consts.YIELDING_RESOURCES)
+    num_unique_resources = 0
+    for resource in Consts.ResourceType:
+        if player.resource_hand().cards_of_type(resource).size() > 0:
+            num_unique_resources += 1
+    return num_unique_resources / MAX_RESOURCE_TYPES
 
 def everything_heuristic(session: GameSession, player: Player) -> float:
     for p in session.players():
         if p.get_id() == player.get_id():
-            return probability_score_heuristic(session, player) + \
-                   vp_heuristic(session, player) + \
-                   road_len_heuristic(session, player)
 
+            prob = probability_score_heuristic(session, player)
+            vp = vp_heuristic(session, player)
+            road = road_len_heuristic(session, player)
+            won = game_won_heuristic(session, player)
+            hsize = hand_size_heuristic(session, player)
+            hdiverse = hand_diversity_heuristic(session, player)
+            devs = dev_cards_heuristic(session, player)
+            purchases = affordable_purchasables_heuristic(session, player)
+            legal_hand = legal_hand_heuristic(session, player)
+            s = sum([prob, vp, road, won, hsize, hdiverse, devs, purchases, legal_hand])
+            # print('player', player, 'prob', round(prob,3), 'vp', round(vp,3), 'road', round(road,3),
+            #       'won', round(won,3), 'hsize', round(hsize,3), 'hdiverse', round(hdiverse,3), 'devs', round(devs,3),
+            #       'purchasables', round(purchases,3), 'legal hand', legal_hand, 'sum =', s)
+            return s
+
+
+def legal_hand_heuristic(session, player):
+    if player.resource_hand_size() < Consts.MAX_CARDS_IN_HAND:
+        return 0.0001
+    else:
+        return 0
 
 def relative_everything_heuristic(session: GameSession, player: Player) -> float:
-    other_scores = []
-    my_score = 0
-    for p in session.players():
-        if p.get_id() == player.get_id():
-            my_score = everything_heuristic(session, p)
-        else:
-            other_scores.append(everything_heuristic(session, p))
-    other_avg = sum(other_scores) / len(other_scores)
-    if other_avg == 0:
-        return float('inf')
-
-    return my_score / other_avg
+    return relative_of(everything_heuristic, session, player)
 
 
+def affordable_purchasables_heuristic(session, player):
+
+    num_affordable = 0
+    my_hand = player.resource_hand()
+    contained = False
+    for purchasable, cost in Consts.COSTS.items():
+        # print(1)
+        if my_hand.contains(cost):
+            num_affordable += 1
+            contained = True
+        cost_copy = deepcopy(cost)
+        cost_copy.insert(cost)
+        if my_hand.contains(cost_copy):
+            num_affordable += 2
+
+    if contained:
+        contained = False
+        for purchasable1, purch2 in combinations(Consts.PurchasableType, 2):
+            # print(2)
+            tot_cost = deepcopy(Consts.COSTS[purchasable1])
+            tot_cost.insert(Consts.COSTS[purch2])
+            if my_hand.contains(tot_cost):
+                contained = True
+                num_affordable += 2
+    if contained:
+        for purchasable1, purch2, p3 in combinations(Consts.PurchasableType, 3):
+            # print(3)
+            tot_cost = deepcopy(Consts.COSTS[purchasable1])
+            tot_cost.insert(Consts.COSTS[purch2])
+            tot_cost.insert(Consts.COSTS[p3])
+            if my_hand.contains(tot_cost):
+                num_affordable += 3
+    # print('END')
+    return num_affordable / 15
 
 
 def main_heuristic(session:GameSession,player:Player):
