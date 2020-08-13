@@ -27,10 +27,7 @@ def find_sim_player(session: GameSession, player: Player) -> Player:
 # We don't need the session for this specific heuristic, but this is the
 # general form:
 def vp_heuristic(session: GameSession, player: Player) -> int:
-    __sim_player = find_sim_player(session, player)
-    if __sim_player != None:
-        return __sim_player.vp()/10 # 10 is the bound
-    return 0
+    return player.vp()/10
 
 
 def harbors_heuristic(session: GameSession, player: Player):
@@ -192,9 +189,9 @@ def enough_res_to_buy(session: GameSession, player: Player):
 
 
 def probability_score_heuristic(session: GameSession, player: Player) -> float:
-    for p in session.players():
-        if p.get_id() == player.get_id():
-            return session.board()._probability_score(p) + session.board()._expectation_score(p)
+    return session.board().probability_score(player) + \
+           session.board().expectation_score(player) + \
+           session.potential_probability_score(player)
 
 
 def road_len_heuristic(session: GameSession, player: Player) -> float:
@@ -237,20 +234,29 @@ def everything_heuristic(session: GameSession, player: Player) -> float:
     for p in session.players():
         if p.get_id() == player.get_id():
             player = p
-    prob = probability_score_heuristic(session, player)
-    vp = vp_heuristic(session, player)
-    road = road_len_heuristic(session, player)
+    prob = 1 * probability_score_heuristic(session, player)
+    vp = 30 * vp_heuristic(session, player)
+    road = 1.5 * road_len_heuristic(session, player)
     won = game_won_heuristic(session, player)
-    hsize = hand_size_heuristic(session, player)
-    hdiverse = hand_diversity_heuristic(session, player)
-    devs = dev_cards_heuristic(session, player)
+    hsize = 0 # hand_size_heuristic(session, player)
+    hdiverse = 0 #hand_diversity_heuristic(session, player)
+    devs = 2.5 * dev_cards_heuristic(session, player)
     purchases = affordable_purchasables_heuristic(session, player)
-    legal_hand = legal_hand_heuristic(session, player)
-    s = sum([prob, vp, road, won, hsize, hdiverse, devs, purchases, legal_hand])
+    legal_hand = 0 #legal_hand_heuristic(session, player)
+    opp_score = opp_score_heuristic(session, player)
+    s = sum([prob, vp, road, won, hsize, hdiverse, devs, purchases, legal_hand, opp_score])
     # print('player', player, 'prob', round(prob,3), 'vp', round(vp,3), 'road', round(road,3),
     #       'won', round(won,3), 'hsize', round(hsize,3), 'hdiverse', round(hdiverse,3), 'devs', round(devs,3),
     #       'purchasables', round(purchases,3), 'legal hand', legal_hand, 'sum =', s)
     return s
+
+
+def opp_score_heuristic(session, player):
+    max_vp_player = max([p for p in session.players() if p != player], key=lambda p: p.vp())
+    opp_score = (hand_size_heuristic(session, max_vp_player) +
+                      10*vp_heuristic(session, max_vp_player) +
+                      1.5*road_len_heuristic(session, max_vp_player))
+    return (1 / opp_score) if opp_score != 0 else 0
 
 
 def legal_hand_heuristic(session, player):

@@ -44,6 +44,7 @@ class GameSession:
         self.__turn_order = self.__init_turn_order(*players)
         self.__num_players = len(self.__turn_order)
         self.__player_colors = ()
+        self.__player_vp_histories = {p: [] for p in self.players()}
 
         # resources deck #
         self.__res_deck = Hand.Hand(*Consts.RES_DECK)
@@ -68,14 +69,19 @@ class GameSession:
         # Saving a log of game sessions:
         self.__logger = GameLogger.GameLogger(log) if log is not None else None
 
+    def num_turns_played(self) -> int:
+        return self.__num_turns_played
+
     def run_game(self) -> None:
         self.__run_pre_game()
 
         for curr_player in self.__turn_generator(self.__num_players):
-            print(self.__num_turns_played)
             self.__vp_earned_this_phase = 0
             self.__curr_player_sim = curr_player
             self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
+            if self.__num_turns_played % 10 == 0:
+                print(self.__num_turns_played, self.__curr_player_sim, 'playing...')
+            # print(*('{} = {}  '.format(p, p.vp()) for p in self.players()))
 
             # print(self.status_table())
             # TODO add option to use dev card before roll?
@@ -177,6 +183,7 @@ class GameSession:
             dprint(self.board())
             dprint(self.status_table())
             # print(self.status_table())
+            self.__update_vp_histories()
             if self.is_game_over():
                 self.__phase = GamePhase.GAME_OVER
                 self.__possible_moves_this_phase = []
@@ -185,6 +192,13 @@ class GameSession:
                 print(f'\n\n\nGAME OVER - player {curr_player} won!!!')
                 print("Game Ended After", self.__num_turns_played, "Turns")
                 break
+
+    def __update_vp_histories(self) -> None:
+        for p in self.players():
+            self.__player_vp_histories[p].append(p.vp())
+
+    def vp_history(self):
+        return self.__player_vp_histories
 
     def winner(self) -> Union[Player, None]:
         if self.is_game_over():
@@ -403,7 +417,7 @@ class GameSession:
         curr_player = self.__curr_player_sim
 
         vp_before = curr_player.vp()
-        self.__apply_move(move_to_play)
+        self.__apply_move(move_to_play, mock=True)
         vp_after = curr_player.vp()
         self.__vp_earned_this_phase = vp_after - vp_before
 
@@ -686,7 +700,7 @@ class GameSession:
                 # while build_settlement_move not in self.__possible_moves_this_phase:
                 #     self.__illegal_move = True
                 #     build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                self.__illegal_move = False
+                # self.__illegal_move = False
 
                 # add new settlement to game
                 settlement_node = build_settlement_move.at()
@@ -762,7 +776,8 @@ class GameSession:
             opp_hand = opp.resource_hand()
             if opp_hand.size():
                 # TODO should not be unknown since agent theoretically knows all cards in players hand, sim doesnt reveal info
-                removed_card = Hand.Hand(Consts.ResourceType.UNKNOWN) if mock else opp_hand.remove_random_card()
+                # removed_card = Hand.Hand(Consts.ResourceType.UNKNOWN) if mock else opp_hand.remove_random_card()
+                removed_card = opp_hand.remove_random_card()
                 curr_player.receive_cards(removed_card)
                 if printout:
                     dprint(f'[ROBBER PROTOCOL] player {curr_player} took {removed_card} from player {opp}')
@@ -792,7 +807,16 @@ class GameSession:
                 dev_cost = Consts.COSTS.get(Consts.PurchasableType.DEV_CARD)
                 player.throw_cards(dev_cost)
                 self.__res_deck.insert(dev_cost)
-                card = Hand.Hand(Consts.DevType.UNKNOWN) if mock else self.__dev_deck.remove_random_card()
+                # if mock use random card from orig deck minus all used cards
+                if mock:
+                    temp_deck = Hand.Hand(*Consts.DEV_DECK)
+                    for p in self.players():
+                        used = p.used_dev_hand()
+                        temp_deck.remove(used)
+                    card = temp_deck.remove_random_card()
+                    del temp_deck
+                else:
+                    card = self.__dev_deck.remove_random_card()
                 player.receive_cards(card)
                 self.__dev_cards_bought_this_turn.insert(card)
                 if printout:

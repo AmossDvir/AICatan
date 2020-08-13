@@ -13,7 +13,7 @@ from Dice import PROBABILITIES
 class Board:
     COLORS = {
         'TEAL': '\033[96m',
-        'YELLOW': '\033[33m',
+        'YELLOW': '\033[93m',
         'RED': '\033[91m',
         'BLUE': '\033[94m',
         'END': '\033[0m'
@@ -221,22 +221,21 @@ class Board:
         #     if max_len < max_curr_len:
         #         max_len = max_curr_len
         # return max_len
-    def _probability_score(self, player: Player) -> float:
+    def probability_score(self, player: Player) -> float:
         """
         :return: player's probability of getting any resource/s in a given turn, based on settlements / cities
         """
         rolls = set()
-        for settlement_loc in player.settlement_nodes():
-            for hex_tile in self.get_adj_tile_ids_to_node(settlement_loc):
-                rolls.add(self.hexes()[hex_tile].token())
-        for city_loc in player.city_nodes():
-            for hex_tile in self.get_adj_tile_ids_to_node(city_loc):
-                rolls.add(self.hexes()[hex_tile].token())
+        for loc in player.settlement_nodes() + player.city_nodes():
+            for hex_tile in self.get_adj_tile_ids_to_node(loc):
+                if not self.hexes()[hex_tile].has_robber():
+                    rolls.add(self.hexes()[hex_tile].token())
+
         prob = sum(PROBABILITIES.get(roll, 0) for roll in rolls)
         assert 0 <= prob <= 1
         return prob
 
-    def _expectation_score(self, player: Player) -> float:
+    def expectation_score(self, player: Player) -> float:
         """
         :return: player's expected resource gain in a given turn, based on settlements / cities
         """

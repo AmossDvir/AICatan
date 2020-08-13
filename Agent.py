@@ -167,42 +167,44 @@ class ProbabilityAgent(Agent):
         return move
 
 class ExpectimaxProbAgent(Agent):
-    def __init__(self, heuristic: Callable, depth: int = 1, iters: int = 1):
+    def __init__(self, heuristic: Callable, depth: int = 0, iters: int = 1):
         super().__init__(AgentType.EXPROB)
         self.__depth = depth
         self.__iterations = iters
         self.__h = heuristic
         self.__harry = OneMoveHeuristicAgent(heuristic)
         self.__randy = RandomAgent()
+        self.__curr_depth = 2
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         for p in state.players():
             if p == player:
                 player = p
                 break
-        max_val = -INF
-        max_moves = [moves[0]]
-        # print('got moves')
-        for m in moves:
-            new_state = deepcopy(state)
-            new_state.simulate_game(m)
-            m_val = self.__h(new_state, player)
-            # print(m_val, m.info())
-            del new_state
-            if m_val > max_val:
-                max_val = m_val
-                max_moves = [m]
-            elif m_val == max_val:
-                max_moves.append(m)
-        if len(max_moves) == 1:
-            return max_moves[0]
+        # max_val = -INF
+        # max_moves = [moves[0]]
+        # # print('got moves')
+        # for m in moves:
+        #     new_state = deepcopy(state)
+        #     new_state.simulate_game(m)
+        #     m_val = self.__h(new_state, player)
+        #     # print(m_val, m.info())
+        #     del new_state
+        #     if m_val > max_val:
+        #         max_val = m_val
+        #         max_moves = [m]
+        #     elif m_val == max_val:
+        #         max_moves.append(m)
+        # if len(max_moves) == 1:
+        #     return max_moves[0]
 
         # print(f'\nmax moves (val {max_val})')
         # print(*(m.info() for m in max_moves), sep='\n')
-
+        self.__curr_depth -= 1
+        max_moves = moves
         all_move_values = []
         move_expected_vals = []
-        num_moves = len(max_moves)
+        # num_moves = len(max_moves)
         # print('\nsimulating...')
         for move_idx, move in enumerate(max_moves):
             all_move_values.append([])
@@ -210,6 +212,7 @@ class ExpectimaxProbAgent(Agent):
                 # print(f'i {_i} / {self.__iterations}')
                 move_state = deepcopy(state)
                 move_state.simulate_game(move)
+                self.sim_me(move_state, player)
                 for _d in range(self.__depth):
                     # print(f'd {_d} / {self.__depth}')
                     self.sim_me(move_state, player)
@@ -232,12 +235,20 @@ class ExpectimaxProbAgent(Agent):
                 best_moves.append(m)
         # print(f'\nbest moves (exp {max_val})')
         # print(*(m.info() for m in best_moves), sep='\n')
+        self.__curr_depth += 1
         if len(best_moves) == 1:
             return best_moves[0]
         else:
             return self.__harry.choose(best_moves, player, state)
 
     def sim_me(self, session, my_player):
+        # possible_moves = session.possible_moves_this_phase()
+        # if session.current_player() == my_player and possible_moves:
+        #     if self.__curr_depth <= 0:
+        #         session.simulate_game(self.__harry.choose(possible_moves, my_player, session))
+        #     else:
+        #         session.simulate_game(self.choose(possible_moves, my_player, session))
+
         while session.current_player() == my_player and session.possible_moves_this_phase():
             session.simulate_game(self.__harry.choose(session.possible_moves_this_phase(),
                                                       session.current_player(),
