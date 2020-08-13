@@ -311,21 +311,23 @@ class GameSession:
         # trade legality with deck
         for homogeneous_hand in self.__homogeneous_hands_of_size(player, Consts.DECK_TRADE_RATIO):
             for available_resource in self.__available_resources():
-                if [card for card in homogeneous_hand][0] != available_resource:
+                if not homogeneous_hand.contains(Hand.Hand(available_resource)):
                     moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
 
         # trade legality with general harbor
         if self.__has_general_harbor(player):
             for homogeneous_hand in self.__homogeneous_hands_of_size(player, Consts.GENERAL_HARBOR_TRADE_RATIO):
                 for available_resource in self.__available_resources():
-                    moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
+                    if not homogeneous_hand.contains(Hand.Hand(available_resource)):
+                        moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
 
         # trade legality with resource harbor
         for resource in player.harbor_resources():
             cards_out = Hand.Hand(*[resource for _ in range(Consts.RESOURCE_HARBOR_TRADE_RATIO)])
             if player.resource_hand().contains(cards_out):
                 for available_resource in self.__available_resources():
-                    moves.append(Moves.TradeMove(player, cards_out, Hand.Hand(available_resource)))
+                    if not cards_out.contains(Hand.Hand(available_resource)):
+                        moves.append(Moves.TradeMove(player, cards_out, Hand.Hand(available_resource)))
 
         return moves
 
@@ -907,22 +909,10 @@ class GameSession:
             elif isinstance(move, Moves.TradeMove):
                 cards_received = move.gets()
                 cards_given = move.gives()
-                type_given = cards_given.get_same_cards_type()
-                type_received = cards_received.get_same_cards_type()
 
-
-
-                if type_received == type_given:
-                    dprint(f"player {player} tried to trade {type_given}'s with {type_received}")
-
-                else:
-
-                    player.receive_cards(cards_received)
-                    self.__res_deck.remove(cards_received)
                 player.receive_cards(cards_received)
                 self.__res_deck.remove(cards_received)
 
-                cards_given = move.gives()
                 player.throw_cards(cards_given)
                 self.__res_deck.insert(cards_given)
 
