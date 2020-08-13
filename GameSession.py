@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Generator, Union, List, Tuple
+from typing import Generator, Union, List
 from itertools import combinations
 from enum import Enum
 from copy import deepcopy
@@ -30,7 +30,6 @@ class GamePhase(Enum):  # used for self reference when agent wants to continue s
 
 
 class GameSession:
-    # def __init__(self, agent1: Agent.Agent, agent2: Agent.Agent, agent3: Agent.Agent, agent4: Agent.Agent = None):
     def __init__(self, log: str = None, *players: Player.Player):
         assert Consts.MIN_PLAYERS <= len(players) <= Consts.MAX_PLAYERS
 
@@ -45,6 +44,7 @@ class GameSession:
         self.__turn_order = self.__init_turn_order(*players)
         self.__num_players = len(self.__turn_order)
         self.__player_colors = ()
+        self.__player_vp_histories = {p: [] for p in self.players()}
 
         # resources deck #
         self.__res_deck = Hand.Hand(*Consts.RES_DECK)
@@ -69,14 +69,19 @@ class GameSession:
         # Saving a log of game sessions:
         self.__logger = GameLogger.GameLogger(log) if log is not None else None
 
+    def num_turns_played(self) -> int:
+        return self.__num_turns_played
+
     def run_game(self) -> None:
         self.__run_pre_game()
 
         for curr_player in self.__turn_generator(self.__num_players):
-            print(self.__num_turns_played)
             self.__vp_earned_this_phase = 0
             self.__curr_player_sim = curr_player
             self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
+            if self.__num_turns_played % 10 == 0:
+                print(self.__num_turns_played, self.__curr_player_sim, 'playing...')
+            # print(*('{} = {}  '.format(p, p.vp()) for p in self.players()))
 
             # print(self.status_table())
             # TODO add option to use dev card before roll?
@@ -98,12 +103,12 @@ class GameSession:
                         self.__throw_player = player
                         self.__throw_player_hand_size = player_hand_size - (player_hand_size // 2)
                         for _ in range(player_hand_size // 2):
-                            self.__possible_moves_this_phase = self.__get_possible_throw_moves(player, 1)
+                            self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
                             throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                            while throw_move not in self.__possible_moves_this_phase:
-                                self.__illegal_move = True
-                                throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                            self.__illegal_move = False
+                            # while throw_move not in self.__possible_moves_this_phase:
+                            #     self.__illegal_move = True
+                            #     throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                            # self.__illegal_move = False
                             cards_thrown = throw_move.throws()
                             dprint(f'[RUN GAME] player {player} had too many cards ({player_hand_size}), '
                                    f'he threw {cards_thrown}')
@@ -114,10 +119,10 @@ class GameSession:
                 self.__phase = GamePhase.ROBBER_PLACE
                 self.__possible_moves_this_phase = self.__get_possible_knight_moves(curr_player, robber=True)
                 knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                while knight_move not in self.__possible_moves_this_phase:
-                    self.__illegal_move = True
-                    knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                self.__illegal_move = False
+                # while knight_move not in self.__possible_moves_this_phase:
+                #     self.__illegal_move = True
+                #     knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                # self.__illegal_move = False
 
                 robber_hex = knight_move.hex_id()
                 opp = knight_move.take_from()
@@ -140,10 +145,10 @@ class GameSession:
             dprint(f'[RUN GAME] player {curr_player} can play:\n')
             dprint('\n'.join(m.info() for m in moves_available) + '\n')
             move_to_play = curr_player.choose(moves_available, deepcopy(self))
-            while move_to_play not in moves_available:
-                self.__illegal_move = True
-                move_to_play = curr_player.choose(moves_available, deepcopy(self))
-            self.__illegal_move = False
+            # while move_to_play not in moves_available:
+            #     self.__illegal_move = True
+            #     move_to_play = curr_player.choose(moves_available, deepcopy(self))
+            # self.__illegal_move = False
 
             dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
 
@@ -161,10 +166,10 @@ class GameSession:
                 dprint(f'[RUN GAME] player {curr_player} can play:\n')
                 dprint('\n'.join(m.info() for m in moves_available) + '\n')
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
-                while move_to_play not in moves_available:
-                    self.__illegal_move = True
-                    move_to_play = curr_player.choose(moves_available, deepcopy(self))
-                self.__illegal_move = False
+                # while move_to_play not in moves_available:
+                #     self.__illegal_move = True
+                #     move_to_play = curr_player.choose(moves_available, deepcopy(self))
+                # self.__illegal_move = False
                 dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
 
                 vp_before = curr_player.vp()
@@ -178,6 +183,7 @@ class GameSession:
             dprint(self.board())
             dprint(self.status_table())
             # print(self.status_table())
+            self.__update_vp_histories()
             if self.is_game_over():
                 self.__phase = GamePhase.GAME_OVER
                 self.__possible_moves_this_phase = []
@@ -187,12 +193,19 @@ class GameSession:
                 print("Game Ended After", self.__num_turns_played, "Turns")
                 break
 
+    def __update_vp_histories(self) -> None:
+        for p in self.players():
+            self.__player_vp_histories[p].append(p.vp())
+
+    def vp_history(self):
+        return self.__player_vp_histories
+
     def winner(self) -> Union[Player, None]:
         if self.is_game_over():
             return max([p for p in self.players()], key=lambda p: p.vp())
 
     def current_player(self) -> Player.Player:
-        return self.players()[self.curr_turn()]
+        return self.__curr_player_sim
 
     def curr_turn(self) -> int:
         return self.__curr_turn_idx
@@ -298,7 +311,8 @@ class GameSession:
         # trade legality with deck
         for homogeneous_hand in self.__homogeneous_hands_of_size(player, Consts.DECK_TRADE_RATIO):
             for available_resource in self.__available_resources():
-                moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
+                if [card for card in homogeneous_hand][0] != available_resource:
+                    moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
 
         # trade legality with general harbor
         if self.__has_general_harbor(player):
@@ -335,7 +349,8 @@ class GameSession:
                 if player_hand_size > Consts.MAX_CARDS_IN_HAND:
                     self.__throw_player = player
                     self.__throw_player_hand_size = player_hand_size - (player_hand_size // 2)
-                    return self.__get_possible_throw_moves(player, 1)
+                    self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
+                    return self.__possible_moves_this_phase
 
         else:  # not robber
             # distribute resources
@@ -352,7 +367,8 @@ class GameSession:
         moves_available = self.get_possible_moves(curr_player)
         dprint(f'[RUN GAME] player {curr_player} can play:\n')
         dprint('\n'.join(m.info() for m in moves_available) + '\n')
-        return moves_available
+        self.__possible_moves_this_phase = moves_available
+        return self.__possible_moves_this_phase
 
     def __robber_place_sim(self, move: Moves.UseKnightDevMove) -> List[Moves.Move]:
         knight_move = move
@@ -365,7 +381,8 @@ class GameSession:
         # query player for move #
         self.__phase = GamePhase.MAKE_MOVE
         moves_available = self.get_possible_moves(curr_player)
-        return moves_available
+        self.__possible_moves_this_phase = moves_available
+        return self.__possible_moves_this_phase
 
     def __robber_throw_sim(self, move_to_play: Moves.ThrowMove) -> List[Moves.Move]:
         player = self.__throw_player
@@ -375,7 +392,8 @@ class GameSession:
         player.throw_cards(cards_thrown)
         self.__res_deck.insert(cards_thrown)
         if player.resource_hand().size() > self.__throw_player_hand_size:
-            return self.__get_possible_throw_moves(player, 1)
+            self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
+            return self.__possible_moves_this_phase
         else:
             next_player_idx = self.players().index(player) + 1
             while next_player_idx < len(self.players()):
@@ -384,31 +402,35 @@ class GameSession:
                 if next_player_hand_size > Consts.MAX_CARDS_IN_HAND:
                     self.__throw_player = next_player
                     self.__throw_player_hand_size = next_player_hand_size - (next_player_hand_size // 2)
-                    return self.__get_possible_throw_moves(self.__throw_player, 1)
+                    self.__possible_moves_this_phase = self.__get_possible_throw_moves(self.__throw_player)
+                    return self.__possible_moves_this_phase
                 else:
                     next_player_idx += 1
 
         # move robber
         self.__phase = GamePhase.ROBBER_PLACE
         knight_moves = self.__get_possible_knight_moves(self.__curr_player_sim, robber=True)
-        return knight_moves
+        self.__possible_moves_this_phase = knight_moves
+        return self.__possible_moves_this_phase
 
     def __make_move_sim(self, move_to_play: Moves.Move) -> List[Moves.Move]:
         curr_player = self.__curr_player_sim
 
         vp_before = curr_player.vp()
-        self.__apply_move(move_to_play)
+        self.__apply_move(move_to_play, mock=True)
         vp_after = curr_player.vp()
         self.__vp_earned_this_phase = vp_after - vp_before
 
         if move_to_play.get_type() != Moves.MoveType.PASS:
             moves_available = self.get_possible_moves(curr_player)
-            return moves_available
+            self.__possible_moves_this_phase = moves_available
+            return self.__possible_moves_this_phase
 
         elif self.is_game_over():
             self.__phase = GamePhase.GAME_OVER
             dprint(f'\n\n\nGAME OVER - player {curr_player} won!!!')
-            return []
+            self.__possible_moves_this_phase = []
+            return self.__possible_moves_this_phase
         else:   # continue to next player
             next_player_idx = (self.players().index(curr_player) + 1) % len(self.players())
             self.__curr_player_sim = self.players()[next_player_idx]
@@ -450,7 +472,8 @@ class GameSession:
 
         self.__phase = GamePhase.PRE_GAME_SETTLEMENT
         settlement_moves = self.__get_possible_build_settlement_moves(self.__curr_player_sim, pre_game=True)
-        return settlement_moves
+        self.__possible_moves_this_phase = settlement_moves
+        return self.__possible_moves_this_phase
 
     def __pre_game_settlement_sim(self, move_to_play: Moves.BuildMove) -> List[Moves.Move]:
         # add new settlement to game
@@ -469,7 +492,18 @@ class GameSession:
         adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
         possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
                                for edge in adj_edges]
-        return possible_road_moves
+        self.__possible_moves_this_phase = possible_road_moves
+        return self.__possible_moves_this_phase
+
+    def __update_player_sim(self, curr_player: Player) -> None:
+        p_i = 0
+        for i, p in enumerate(self.players()):
+            if p == curr_player:
+                p_i = i
+                break
+
+        next_player_idx = (p_i + 1) % len(self.players())
+        self.__curr_player_sim = self.players()[next_player_idx]
 
     def __start_sim(self) -> List[Moves.BuildMove]:
         _round = self.__pre_game_round
@@ -505,7 +539,8 @@ class GameSession:
             return self.__make_move_sim(move_to_play)
 
         elif self.__phase == GamePhase.GAME_OVER:
-            return []
+            self.__possible_moves_this_phase = []
+            return self.__possible_moves_this_phase
 
     def simulate_move(self, move: Moves.Move) -> GameSession:
         state = deepcopy(self)
@@ -662,10 +697,10 @@ class GameSession:
                 self.__phase = GamePhase.PRE_GAME_SETTLEMENT
                 self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player, pre_game=True)
                 build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                while build_settlement_move not in self.__possible_moves_this_phase:
-                    self.__illegal_move = True
-                    build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                self.__illegal_move = False
+                # while build_settlement_move not in self.__possible_moves_this_phase:
+                #     self.__illegal_move = True
+                #     build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
+                # self.__illegal_move = False
 
                 # add new settlement to game
                 settlement_node = build_settlement_move.at()
@@ -683,10 +718,10 @@ class GameSession:
                                        for edge in adj_edges]
                 possible_road_moves = self.__possible_moves_this_phase
                 build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
-                while build_adj_road_move not in self.__possible_moves_this_phase:
-                    self.__illegal_move = True
-                    build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
-                self.__illegal_move = False
+                # while build_adj_road_move not in self.__possible_moves_this_phase:
+                #     self.__illegal_move = True
+                #     build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
+                # self.__illegal_move = False
 
                 # add new road to game
                 road_edge = build_adj_road_move.at()
@@ -741,7 +776,8 @@ class GameSession:
             opp_hand = opp.resource_hand()
             if opp_hand.size():
                 # TODO should not be unknown since agent theoretically knows all cards in players hand, sim doesnt reveal info
-                removed_card = Hand.Hand(Consts.ResourceType.UNKNOWN) if mock else opp_hand.remove_random_card()
+                # removed_card = Hand.Hand(Consts.ResourceType.UNKNOWN) if mock else opp_hand.remove_random_card()
+                removed_card = opp_hand.remove_random_card()
                 curr_player.receive_cards(removed_card)
                 if printout:
                     dprint(f'[ROBBER PROTOCOL] player {curr_player} took {removed_card} from player {opp}')
@@ -754,7 +790,12 @@ class GameSession:
     def __apply_move(self, move: Moves.Move, printout=True, mock=False) -> None:
         if move.get_type() == Moves.MoveType.PASS:
             return
+
         player = move.player()
+        for p in self.players():
+            if p == move.player():
+                player = p
+
         saved_state = deepcopy(self)
         try:
             if isinstance(move, Moves.ThrowMove):
@@ -766,7 +807,16 @@ class GameSession:
                 dev_cost = Consts.COSTS.get(Consts.PurchasableType.DEV_CARD)
                 player.throw_cards(dev_cost)
                 self.__res_deck.insert(dev_cost)
-                card = Hand.Hand(Consts.DevType.UNKNOWN) if mock else self.__dev_deck.remove_random_card()
+                # if mock use random card from orig deck minus all used cards
+                if mock:
+                    temp_deck = Hand.Hand(*Consts.DEV_DECK)
+                    for p in self.players():
+                        used = p.used_dev_hand()
+                        temp_deck.remove(used)
+                    card = temp_deck.remove_random_card()
+                    del temp_deck
+                else:
+                    card = self.__dev_deck.remove_random_card()
                 player.receive_cards(card)
                 self.__dev_cards_bought_this_turn.insert(card)
                 if printout:
@@ -1019,16 +1069,9 @@ class GameSession:
         return moves
 
     @staticmethod
-    def __get_possible_throw_moves(player: Player.Player, num_to_throw: int) -> List[Moves.ThrowMove]:
-        players_cards = [card for card in player.resource_hand()]
-        throw_combinations = list()
-        for comb in combinations(players_cards, num_to_throw):
-            throw_hand = Hand.Hand(*comb)
-            # if throw_hand not in throw_combinations:
-            #     throw_combinations.append(throw_hand)
-            throw_combinations.append(throw_hand)
-
-        throw_moves = [Moves.ThrowMove(player, hand) for hand in throw_combinations]
+    def __get_possible_throw_moves(player: Player.Player) -> List[Moves.ThrowMove]:
+        players_cards = list(set([card for card in player.resource_hand() if card in Consts.YIELDING_RESOURCES]))
+        throw_moves = [Moves.ThrowMove(player, Hand.Hand(card)) for card in players_cards]
         return throw_moves
 
     def __get_possible_build_road_moves(self, player: Player.Player, free: bool = False) -> List[Moves.BuildMove]:
@@ -1043,4 +1086,3 @@ class GameSession:
                  for node in self.__buildable_nodes(player, pre_game)]
         # print('POSSIBLE SETTLE MOVES', moves)
         return moves
-
