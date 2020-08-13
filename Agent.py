@@ -109,29 +109,41 @@ class HumanAgent(Agent):
     def __repr__(self):
         return self.__name
 
-
 class OneMoveHeuristicAgent(Agent):
     # Open the tree only one move forward and apply the given heuristic on it
     def __init__(self, heuristic=main_heuristic):
         super().__init__(AgentType.ONE_MOVE)
         self.__heur_func = heuristic
+        self.__randy = RandomAgent()
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         move_values = []
+        # print('&&&&&&&&')
+        # print(*(m.info() for m in moves), sep='\n')
         for move in moves:
-            # if move.get_type() == Moves.MoveType.TRADE:
-
-            new_state = state.simulate_move(move)
+            # print(move.info())
+            # new_state = state.simulate_move(move)
+            new_state = deepcopy(state)
+            legal_moves = new_state.simulate_game(move)
             # This is not good enough - simulate move will only choose one random outcome
             # when several are possible (like rolling the dice or buying dev card)
             move_values.append(self.__heur_func(new_state, move.player(),move))
+            curr_p = move.player()
+            for p in new_state.players():
+                if p == move.player():
+                    curr_p = p
+            hval = self.__heur_func(new_state, curr_p,move)
+            # print('H =', hval)
+            move_values.append(hval)
+            del new_state
+
         max_val = max(move_values)
         argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
+        # print(*(f'{move_values[i]} {m.info()}' for i, m in enumerate(moves)), sep='\n')
         moves = [moves[i] for i in argmax_vals_indices]
-        move = RandomAgent().choose(moves, player, state)
-        # print(player.resource_hand())
+        move = self.__randy.choose(moves, player, state)
+        # print('\n' + move.info() + '\n')
         return move
-
 
 class ProbabilityAgent(Agent):
     def __init__(self):
@@ -162,52 +174,83 @@ class ExpectimaxProbAgent(Agent):
         self.__depth = depth
         self.__iterations = iters
         self.__h = heuristic
-        if depth > 0:
-            self.__lower_level = ExpectimaxProbAgent(self.__h, self.__depth - 1, self.__iterations)
-        else:
-            self.__lower_level = None
+        self.__harry = OneMoveHeuristicAgent(heuristic)
         self.__randy = RandomAgent()
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
-        current_moves = deepcopy(moves)
-        # print(*(m.info() for m in moves), sep='\n')
-        moves_values = []
-        for i, move in enumerate(current_moves):
-            moves_values.append([])
-            for _ in range(self.__iterations):
-                cycles = 0
-                opp_played = False
-                current_iter_state = deepcopy(state)
-                curr_move = deepcopy(move)
-                while True:
-                    current_moves = current_iter_state.simulate_game(curr_move)
-                    curr_player = current_iter_state.sim_current_player()
+        for p in state.players():
+            if p == player:
+                player = p
+                break
+        max_val = -INF
+        max_moves = [moves[0]]
+        # print('got moves')
+        for m in moves:
+            new_state = deepcopy(state)
+            new_state.simulate_game(m)
+            m_val = self.__h(new_state, player)
+            # print(m_val, m.info())
+            del new_state
+            if m_val > max_val:
+                max_val = m_val
+                max_moves = [m]
+            elif m_val == max_val:
+                max_moves.append(m)
+        if len(max_moves) == 1:
+            return max_moves[0]
 
-                    if curr_player.get_id() == player.get_id():
-                        if opp_played:
-                            cycles += 1
-                        opp_played = False
-                    elif not opp_played:
-                        opp_played = True
+        # print(f'\nmax moves (val {max_val})')
+        # print(*(m.info() for m in max_moves), sep='\n')
 
-                    if cycles >= self.__depth or not current_moves:  # max depth or EOG reached
-                        moves_values[i].append(self.__h(current_iter_state, player))
-                        del curr_move
-                        del current_iter_state
-                        break
-                    curr_move = self.__randy.choose(current_moves, player, current_iter_state)
+        all_move_values = []
+        move_expected_vals = []
+        num_moves = len(max_moves)
+        # print('\nsimulating...')
+        for move_idx, move in enumerate(max_moves):
+            all_move_values.append([])
+            for _i in range(self.__iterations):
+                # print(f'i {_i} / {self.__iterations}')
+                move_state = deepcopy(state)
+                move_state.simulate_game(move)
+                for _d in range(self.__depth):
+                    # print(f'd {_d} / {self.__depth}')
+                    self.sim_me(move_state, player)
+                    self.sim_opps(move_state, player)
+                value_reached = self.__h(move_state, player)
+                # print('H =', value_reached)
+                all_move_values[move_idx].append(value_reached)
+                del move_state
+            avg_move_val = sum(all_move_values[move_idx]) / self.__iterations
+            move_expected_vals.append(avg_move_val)
+            # print(f'm {move.info()} {move_idx} / {num_moves} --> {avg_move_val}')
 
-        moves_expectations = []
-        for move_vals in moves_values:
-            if not move_vals:
-                moves_expectations.append(0)
-            else:
-                moves_expectations.append(sum(move_vals) / len(move_vals))
-        max_exp = max(moves_expectations)
-        all_max_indices = [i for i, exp in enumerate(moves_expectations) if exp == max_exp]
-        max_moves = [moves[i] for i in all_max_indices]
-        return self.__randy.choose(max_moves, player, state)
+        # print(len(all_move_values), len(max_moves))
 
+        # move_expected_vals = [sum(move_vals) / len(move_vals) for move_vals in all_move_values]
+        max_val = max(move_expected_vals)
+        best_moves = []
+        for m_i, m in enumerate(max_moves):
+            if move_expected_vals[m_i] == max_val:
+                best_moves.append(m)
+        # print(f'\nbest moves (exp {max_val})')
+        # print(*(m.info() for m in best_moves), sep='\n')
+        if len(best_moves) == 1:
+            return best_moves[0]
+        else:
+            return self.__harry.choose(best_moves, player, state)
+
+    def sim_me(self, session, my_player):
+        while session.current_player() == my_player and session.possible_moves_this_phase():
+            session.simulate_game(self.__harry.choose(session.possible_moves_this_phase(),
+                                                      session.current_player(),
+                                                      session))
+
+    def sim_opps(self, session, my_player):
+        while session.current_player() != my_player and session.possible_moves_this_phase():
+            move_played = self.__randy.choose(session.possible_moves_this_phase(),
+                                              session.current_player(),
+                                              session)
+            session.simulate_game(move_played)
 
 class DQNAgent(Agent):
     network = tf.keras.models.load_model("current_model")
