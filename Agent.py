@@ -166,6 +166,7 @@ class ProbabilityAgent(Agent):
 
         return move
 
+
 class ExpectimaxProbAgent(Agent):
     def __init__(self, heuristic: Callable, depth: int = 0, iters: int = 1):
         super().__init__(AgentType.EXPROB)

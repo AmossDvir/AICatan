@@ -906,6 +906,19 @@ class GameSession:
 
             elif isinstance(move, Moves.TradeMove):
                 cards_received = move.gets()
+                cards_given = move.gives()
+                type_given = cards_given.get_same_cards_type()
+                type_received = cards_received.get_same_cards_type()
+
+
+
+                if type_received == type_given:
+                    dprint(f"player {player} tried to trade {type_given}'s with {type_received}")
+
+                else:
+
+                    player.receive_cards(cards_received)
+                    self.__res_deck.remove(cards_received)
                 player.receive_cards(cards_received)
                 self.__res_deck.remove(cards_received)
 

@@ -55,14 +55,18 @@ class Player:
     def remove_settlement(self, node: int) -> None:
         self.settlement_nodes().remove(node)
 
+
     def harbor_resources(self) -> List[Consts.ResourceType]:
         resources = []
-        yielding_nodes = self.settlement_nodes() + self.city_nodes()
+        yielding_nodes = self.cities_and_settles_nodes()
         for resource, locations in Consts.HARBOR_NODES.items():
             if any(n in locations for n in yielding_nodes):
                 resources.append(resource)
                 continue
         return resources
+
+    def cities_and_settles_nodes(self):
+        return self.settlement_nodes() + self.city_nodes()
 
     def settlement_nodes(self) -> List[int]:
         return self.__settlement_nodes
@@ -163,6 +167,10 @@ class Player:
         return Player.ID_GEN
 
     def info(self) -> str:
+        """
+        supplies important information about the current state of the player
+        :return: None
+        """
         return f'[PLAYER {self}] player_id = {self.get_id()}\n' \
                f'[PLAYER {self}] vp = {self.vp()}\n' \
                f'[PLAYER {self}] agent = {type(self.agent())}\n' \
