@@ -118,7 +118,7 @@ class OneMoveHeuristicAgent(Agent):
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         move_values = []
-        # print('&&&&&&&&')
+        print(moves)
         # print(*(m.info() for m in moves), sep='\n')
         for move in moves:
             # print(move.info())
@@ -139,7 +139,7 @@ class OneMoveHeuristicAgent(Agent):
 
         max_val = max(move_values)
         argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
-        # print(*(f'{move_values[i]} {m.info()}' for i, m in enumerate(moves)), sep='\n')
+        print(*(f'{move_values[i]} {m.info()}' for i, m in enumerate(moves)), sep='\n')
         moves = [moves[i] for i in argmax_vals_indices]
         move = self.__randy.choose(moves, player, state)
         # print('\n' + move.info() + '\n')

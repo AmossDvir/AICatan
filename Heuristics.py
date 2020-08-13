@@ -53,7 +53,10 @@ def keep_res_you_cant_achieve(session: GameSession, player: Player,move:Moves):
     """
     if move.get_type() == Moves.MoveType.TRADE:
         __board = session.board()
-        __board.resources_player_can_get(player)
+        types_res = __board.resources_player_can_get(player)
+        print(types_res.pop(),move.gives(),move.gets())
+
+
         # todo: continue writing
     return 0
 
