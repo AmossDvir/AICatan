@@ -66,11 +66,23 @@ class Board:
         self.hexes()[hex_id].set_robber(True)
 
     def resource_distributions_by_node(self, coord: int) -> Hand.Hand:
-        # print('coord', coord)
-        # print('adj', self.get_adj_tile_ids_to_node(coord))
-        # print([self.hexes()[h].resource() for h in self.get_adj_tile_ids_to_node(coord)])
         return Hand.Hand(*(self.hexes()[h].resource() for h in self.get_adj_tile_ids_to_node(coord)
                            if self.hexes()[h].resource() in Consts.YIELDING_RESOURCES))
+
+    def resources_player_can_get(self,player:Player.Player) -> Hand:
+        """
+        :param player: the given player to check
+        :return: Hand, the potential cards the player can get from his nodes
+        by rolling dice
+        """
+        yielding_nodes = player.cities_and_settles_nodes()
+        types = set()
+        for node in yielding_nodes:
+            node_types = self.resource_distributions_by_node(node).get_cards_types()
+            for type in node_types.copy():
+                types.add(node_types.pop())
+        return types
+
 
     def resource_distributions(self, dice_sum: int) -> Dict[Player.Player, Hand.Hand]:
         dist = {}

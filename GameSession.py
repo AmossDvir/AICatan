@@ -798,8 +798,8 @@ class GameSession:
 
                 cards_received = move.gets()
                 cards_given = move.gives()
-                type_given = cards_given.get_cards_type()
-                type_received = cards_received.get_cards_type()
+                type_given = cards_given.get_same_cards_type()
+                type_received = cards_received.get_same_cards_type()
 
 
 

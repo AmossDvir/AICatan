@@ -124,7 +124,7 @@ class OneMoveHeuristicAgent(Agent):
             new_state = state.simulate_move(move)
             # This is not good enough - simulate move will only choose one random outcome
             # when several are possible (like rolling the dice or buying dev card)
-            move_values.append(self.__heur_func(new_state, move.player()))
+            move_values.append(self.__heur_func(new_state, move.player(),move))
         max_val = max(move_values)
         argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
         moves = [moves[i] for i in argmax_vals_indices]

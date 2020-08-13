@@ -78,10 +78,13 @@ class Hand:
             for _ in range(count):
                 yield card
 
-    def get_cards_type(self):
+    def get_same_cards_type(self):
         # see if all cards are the same:
         if all([type for type in Consts.ResourceType if all(self.cards_of_type(type))]):
             return set(self.resources()).pop()
+
+    def get_cards_types(self):
+        return set(self.resources())
 
 
     def __str__(self) -> str:
@@ -93,4 +96,3 @@ class Hand:
 
     def __eq__(self, other: Hand) -> bool:
         return other.contains(self) and self.contains(other)
-
