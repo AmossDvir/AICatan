@@ -370,3 +370,23 @@ def main_heuristic(session:GameSession,player:Player,move:Moves):
 
     return __builder_characteristic
     # return __diversity + __build + __won_game + __dev
+
+def linear_heuristic(session:GameSession,player:Player, vector=[1]*11):
+    """
+    calculates of score of each and every heuristic
+    and returns a linear combination of them based of vector, which is 11 places long
+    :return: The evaluated value
+    """
+    __sim_player = find_sim_player(session,player)
+    lin =  vp_heuristic(session,__sim_player) * vector[0]
+    lin += harbors_heuristic(session,__sim_player) * vector[1]
+    lin += prefer_resources_in_each_part(session,__sim_player) * vector[2]
+    lin += roads_heuristic(session,__sim_player) * vector[3]
+    lin += settles_heuristic(session,__sim_player) * vector[4]
+    lin += cities_heuristic(session,__sim_player) * vector[5]
+    lin += resources_diversity_heuristic(session,__sim_player) * vector[6]
+    lin += build_in_good_places(session,__sim_player) * vector[7]
+    lin += dev_cards_heuristic(session,__sim_player) * vector[8]
+    lin += game_won_heuristic(session,__sim_player) * vector[9]
+    lin += enough_res_to_buy(session,__sim_player)* vector[10]
+    return lin
