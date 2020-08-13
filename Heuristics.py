@@ -236,21 +236,21 @@ def hand_diversity_heuristic(session, player):
 def everything_heuristic(session: GameSession, player: Player) -> float:
     for p in session.players():
         if p.get_id() == player.get_id():
-
-            prob = probability_score_heuristic(session, player)
-            vp = vp_heuristic(session, player)
-            road = road_len_heuristic(session, player)
-            won = game_won_heuristic(session, player)
-            hsize = hand_size_heuristic(session, player)
-            hdiverse = hand_diversity_heuristic(session, player)
-            devs = dev_cards_heuristic(session, player)
-            purchases = affordable_purchasables_heuristic(session, player)
-            legal_hand = legal_hand_heuristic(session, player)
-            s = sum([prob, vp, road, won, hsize, hdiverse, devs, purchases, legal_hand])
-            # print('player', player, 'prob', round(prob,3), 'vp', round(vp,3), 'road', round(road,3),
-            #       'won', round(won,3), 'hsize', round(hsize,3), 'hdiverse', round(hdiverse,3), 'devs', round(devs,3),
-            #       'purchasables', round(purchases,3), 'legal hand', legal_hand, 'sum =', s)
-            return s
+            player = p
+    prob = probability_score_heuristic(session, player)
+    vp = vp_heuristic(session, player)
+    road = road_len_heuristic(session, player)
+    won = game_won_heuristic(session, player)
+    hsize = hand_size_heuristic(session, player)
+    hdiverse = hand_diversity_heuristic(session, player)
+    devs = dev_cards_heuristic(session, player)
+    purchases = affordable_purchasables_heuristic(session, player)
+    legal_hand = legal_hand_heuristic(session, player)
+    s = sum([prob, vp, road, won, hsize, hdiverse, devs, purchases, legal_hand])
+    # print('player', player, 'prob', round(prob,3), 'vp', round(vp,3), 'road', round(road,3),
+    #       'won', round(won,3), 'hsize', round(hsize,3), 'hdiverse', round(hdiverse,3), 'devs', round(devs,3),
+    #       'purchasables', round(purchases,3), 'legal hand', legal_hand, 'sum =', s)
+    return s
 
 
 def legal_hand_heuristic(session, player):
