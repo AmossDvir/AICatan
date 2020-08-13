@@ -44,10 +44,10 @@ def harbors_heuristic(session: GameSession, player: Player):
     player.harbors()
     return len(__sim_player.harbors())/9
 
-
 def game_won_heuristic(session: GameSession, player: Player):
-    return float('inf') if session.winning_player == player else 0
-
+    if session.winner() is not None:
+        return INF if session.winner() == player else -INF
+    return 0
 
 def relative_vp_heuristic(session: GameSession, player: Player):
     """:returns VP / (average opponent VP) ratio"""
