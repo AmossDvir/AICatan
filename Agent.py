@@ -118,7 +118,7 @@ class OneMoveHeuristicAgent(Agent):
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         move_values = []
-        print(moves)
+        # print('&&&&&&&&')
         # print(*(m.info() for m in moves), sep='\n')
         for move in moves:
             # print(move.info())
@@ -127,19 +127,18 @@ class OneMoveHeuristicAgent(Agent):
             legal_moves = new_state.simulate_game(move)
             # This is not good enough - simulate move will only choose one random outcome
             # when several are possible (like rolling the dice or buying dev card)
-            move_values.append(self.__heur_func(new_state, move.player(),move))
             curr_p = move.player()
             for p in new_state.players():
                 if p == move.player():
                     curr_p = p
-            hval = self.__heur_func(new_state, curr_p,move)
+            hval = self.__heur_func(new_state, curr_p)
             # print('H =', hval)
             move_values.append(hval)
             del new_state
 
         max_val = max(move_values)
         argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
-        print(*(f'{move_values[i]} {m.info()}' for i, m in enumerate(moves)), sep='\n')
+        # print(*(f'{move_values[i]} {m.info()}' for i, m in enumerate(moves)), sep='\n')
         moves = [moves[i] for i in argmax_vals_indices]
         move = self.__randy.choose(moves, player, state)
         # print('\n' + move.info() + '\n')
