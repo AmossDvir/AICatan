@@ -20,11 +20,13 @@ CITIES_WEIGHT = 2.5
 DEV_CARDS_WEIGHT = 2
 ENOUGH_RES_TO_BUY = 1
 
+
 def find_sim_player(session: GameSession, player: Player) -> Player:
     # find the player's turn for the current session simulation
     for sim_player in session.players():
         if sim_player.get_id() == player.get_id():
             return sim_player
+
 
 # We don't need the session for this specific heuristic, but this is the
 # general form:
@@ -34,7 +36,7 @@ def vp_heuristic(session: GameSession, player: Player) -> int:
     """
 
     if player != None:
-        return player.vp()/10 # 10 is the bound
+        return player.vp() / 10  # 10 is the bound
     return 0
 
 
@@ -45,7 +47,7 @@ def harbors_heuristic(session: GameSession, player: Player):
     :param player: a Player
     :return: Integer, the score for the given game session
     """
-    return len(player.harbors())/9
+    return len(player.harbors()) / 9
 
 def smart_trade_heuristic(session: GameSession, player: Player,move:Moves):
     """
@@ -95,6 +97,7 @@ def monopoly_heuristic(session: GameSession, player: Player, move: Moves):
 
     return score
 
+
 def game_won_heuristic(session: GameSession, player: Player):
     """
     :return: infinity if the player won the game, else: 0
@@ -102,6 +105,7 @@ def game_won_heuristic(session: GameSession, player: Player):
     if session.winner() is not None:
         return INF if session.winner() == player else -INF
     return 0
+
 
 def relative_vp_heuristic(session: GameSession, player: Player):
     """:returns VP / (average opponent VP) ratio"""
@@ -166,13 +170,15 @@ def prefer_resources_in_each_part(session: GameSession, player: Player):
     # print("resources heuristic: " , __calc_score)
     return __calc_score / 150
 
-def roads_heuristic(session:GameSession,player:Player):
+
+def roads_heuristic(session: GameSession, player: Player):
     """
     :return: the number of roads the player has, divided by 15 (so between 0 to 1)
     """
-    return player.num_roads()/15 # 15 roads max per player
+    return player.num_roads() / 15  # 15 roads max per player
 
-def settles_heuristic(session:GameSession,player:Player):
+
+def settles_heuristic(session: GameSession, player: Player):
     """
     :return: the number of settlements the player has, divided by 5 (so between 0 to 1)
     and if the player has more that 5, the function returns 0
@@ -180,7 +186,7 @@ def settles_heuristic(session:GameSession,player:Player):
     __settles = player.num_settlements()
     if __settles >= 5:
         return 0
-    return __settles/5 # 5 settlements max per player
+    return __settles / 5  # 5 settlements max per player
 
 def avoid_throwing_cards(session:GameSession,player:Player):
     res_size = player.resource_hand().size()
@@ -195,15 +201,15 @@ def cities_heuristic(session:GameSession,player:Player):
     """
     :return: the number of cities the player has, divided by 4 (so between 0 to 1)
     """
-    return player.num_cities()/4 # 4 cities max per player
+    return player.num_cities() / 4  # 4 cities max per player
 
-def dev_cards_heuristic(session:GameSession,player:Player):
+
+def dev_cards_heuristic(session: GameSession, player: Player):
     """
     :return: the number of development cards the player has, divided by the
     size if the stack on the deck (so between 0 to 1)
     """
     return (player.dev_hand().size() + player.used_dev_hand().size()*2)/26
-
 
 
 def resources_diversity_heuristic(session: GameSession, player: Player):
@@ -216,7 +222,8 @@ def resources_diversity_heuristic(session: GameSession, player: Player):
     for res in __resources[0:5]:
         if res:
             __num_types += 1
-    return __num_types/5
+    return __num_types / 5
+
 
 def build_in_good_places(session: GameSession, player: Player):
     """
@@ -235,7 +242,7 @@ def build_in_good_places(session: GameSession, player: Player):
             num_tiles += 1
             tiles_types.add(__board.hexes()[tile].resource())
             tiles_prob += Dice.PROBABILITIES[__board.hexes()[tile].token()]
-    return (num_tiles*len(tiles_types)*tiles_prob)/227.5 # 227.5 is the bound
+    return (num_tiles * len(tiles_types) * tiles_prob) / 227.5  # 227.5 is the bound
 
 
 def enough_res_to_buy(session: GameSession, player: Player):
@@ -258,8 +265,7 @@ def enough_res_to_buy(session: GameSession, player: Player):
     if __hand.contains(Consts.COSTS[Consts.PurchasableType.DEV_CARD]):
         __dev_card_score += 1
     # print(__hand)
-    return (__road_score + __settle_score + __city_score + __dev_card_score)/3
-
+    return (__road_score + __settle_score + __city_score + __dev_card_score) / 3
 
 
 def probability_score_heuristic(session: GameSession, player: Player) -> float:
@@ -273,6 +279,7 @@ def road_len_heuristic(session: GameSession, player: Player) -> float:
     :return: the road length of the current player divided by 15
     """
     return session.board().road_len(player) / 15
+
 
 def rel_max_everything(session, player):
     return relative_to_max_opp_of(everything_heuristic, session, player)
@@ -299,6 +306,7 @@ def hand_size_heuristic(session, player):
     else:
         return player.resource_hand_size() / OPTIMAL_HAND_SIZE
 
+
 def hand_diversity_heuristic(session, player):
     MAX_RESOURCE_TYPES = len(Consts.YIELDING_RESOURCES)
     num_unique_resources = 0
@@ -306,6 +314,7 @@ def hand_diversity_heuristic(session, player):
         if player.resource_hand().cards_of_type(resource).size() > 0:
             num_unique_resources += 1
     return num_unique_resources / MAX_RESOURCE_TYPES
+
 
 def everything_heuristic(session: GameSession, player: Player) -> float:
     for p in session.players():
@@ -315,11 +324,11 @@ def everything_heuristic(session: GameSession, player: Player) -> float:
     vp = 30 * vp_heuristic(session, player)
     road = 1.5 * road_len_heuristic(session, player)
     won = game_won_heuristic(session, player)
-    hsize = 0 # hand_size_heuristic(session, player)
-    hdiverse = 0 #hand_diversity_heuristic(session, player)
+    hsize = 0  # hand_size_heuristic(session, player)
+    hdiverse = 0  # hand_diversity_heuristic(session, player)
     devs = 2.5 * dev_cards_heuristic(session, player)
     purchases = affordable_purchasables_heuristic(session, player)
-    legal_hand = 0 #legal_hand_heuristic(session, player)
+    legal_hand = 0  # legal_hand_heuristic(session, player)
     opp_score = opp_score_heuristic(session, player)
     s = sum([prob, vp, road, won, hsize, hdiverse, devs, purchases, legal_hand, opp_score])
     # print('player', player, 'prob', round(prob,3), 'vp', round(vp,3), 'road', round(road,3),
@@ -331,8 +340,8 @@ def everything_heuristic(session: GameSession, player: Player) -> float:
 def opp_score_heuristic(session, player):
     max_vp_player = max([p for p in session.players() if p != player], key=lambda p: p.vp())
     opp_score = (hand_size_heuristic(session, max_vp_player) +
-                      10*vp_heuristic(session, max_vp_player) +
-                      1.5*road_len_heuristic(session, max_vp_player))
+                 10 * vp_heuristic(session, max_vp_player) +
+                 1.5 * road_len_heuristic(session, max_vp_player))
     return (1 / opp_score) if opp_score != 0 else 0
 
 
@@ -342,17 +351,16 @@ def legal_hand_heuristic(session, player):
     else:
         return 0
 
+
 def relative_everything_heuristic(session: GameSession, player: Player) -> float:
     return relative_of(everything_heuristic, session, player)
 
 
 def affordable_purchasables_heuristic(session, player):
-
     num_affordable = 0
     my_hand = player.resource_hand()
     contained = False
     for purchasable, cost in Consts.COSTS.items():
-        # print(1)
         if my_hand.contains(cost):
             num_affordable += 1
             contained = True
@@ -364,7 +372,6 @@ def affordable_purchasables_heuristic(session, player):
     if contained:
         contained = False
         for purchasable1, purch2 in combinations(Consts.PurchasableType, 2):
-            # print(2)
             tot_cost = deepcopy(Consts.COSTS[purchasable1])
             tot_cost.insert(Consts.COSTS[purch2])
             if my_hand.contains(tot_cost):
@@ -391,18 +398,18 @@ def main_heuristic(session:GameSession,player:Player):
     :return:
     """
 
-    __sim_player = find_sim_player(session,player)
-    __vp = vp_heuristic(session,__sim_player) * VP_WEIGHT
-    __harbours = harbors_heuristic(session,__sim_player) * HARBOURS_WEIGHT
-    __prefer = prefer_resources_in_each_part(session,__sim_player) * PREFER_RESOURCES_WEIGHT # todo: not good at all
-    __roads = roads_heuristic(session,__sim_player)*ROADS_WEIGHT
-    __settles = settles_heuristic(session,__sim_player) * SETTLES_WEIGHT
-    __cities = cities_heuristic(session,__sim_player) * CITIES_WEIGHT
-    __diversity = resources_diversity_heuristic(session,__sim_player)*DIVERSITY_WEIGHT
-    __build = build_in_good_places(session,__sim_player)*BUILD_IN_GOOD_PLACES_WEIGHT
-    __dev = dev_cards_heuristic(session,__sim_player) * DEV_CARDS_WEIGHT
-    __won_game = game_won_heuristic(session,__sim_player)
-    __enough_res_to_buy = enough_res_to_buy(session,__sim_player)*ENOUGH_RES_TO_BUY
+    __sim_player = find_sim_player(session, player)
+    __vp = vp_heuristic(session, __sim_player) * VP_WEIGHT
+    __harbours = harbors_heuristic(session, __sim_player) * HARBOURS_WEIGHT
+    __prefer = prefer_resources_in_each_part(session, __sim_player) * PREFER_RESOURCES_WEIGHT  # todo: not good at all
+    __roads = roads_heuristic(session, __sim_player) * ROADS_WEIGHT
+    __settles = settles_heuristic(session, __sim_player) * SETTLES_WEIGHT
+    __cities = cities_heuristic(session, __sim_player) * CITIES_WEIGHT
+    __diversity = resources_diversity_heuristic(session, __sim_player) * DIVERSITY_WEIGHT
+    __build = build_in_good_places(session, __sim_player) * BUILD_IN_GOOD_PLACES_WEIGHT
+    __dev = dev_cards_heuristic(session, __sim_player) * DEV_CARDS_WEIGHT
+    __won_game = game_won_heuristic(session, __sim_player)
+    __enough_res_to_buy = enough_res_to_buy(session, __sim_player) * ENOUGH_RES_TO_BUY
 
     #     print("////////////////////")
     #     print(session.board())
@@ -417,11 +424,11 @@ def main_heuristic(session:GameSession,player:Player):
 
     # todo: altogether, needs tuning...
     __sum_score = __vp + __harbours + \
-           __roads + \
-           __settles+ __cities + __build + __dev +\
+                  __roads + \
+                  __settles + __cities + __build + __dev + \
                   __won_game + __diversity + __enough_res_to_buy + __prefer
 
-    __builder_characteristic = __vp + __build + __roads+ __cities + __won_game # todo: pretty good combination
+    __builder_characteristic = __vp + __build + __roads + __cities + __won_game  # todo: pretty good combination
 
     return __builder_characteristic
     # return __diversity + __build + __won_game + __dev
@@ -433,18 +440,18 @@ def linear_heuristic(session:GameSession,player:Player, vector=[1]*11):
     and returns a linear combination of them based of vector, which is 11 places long
     :return: The evaluated value
     """
-    __sim_player = find_sim_player(session,player)
-    lin =  vp_heuristic(session,__sim_player) * vector[0]
-    lin += harbors_heuristic(session,__sim_player) * vector[1]
-    lin += prefer_resources_in_each_part(session,__sim_player) * vector[2]
-    lin += roads_heuristic(session,__sim_player) * vector[3]
-    lin += settles_heuristic(session,__sim_player) * vector[4]
-    lin += cities_heuristic(session,__sim_player) * vector[5]
-    lin += resources_diversity_heuristic(session,__sim_player) * vector[6]
-    lin += build_in_good_places(session,__sim_player) * vector[7]
-    lin += dev_cards_heuristic(session,__sim_player) * vector[8]
-    lin += game_won_heuristic(session,__sim_player) * vector[9]
-    lin += enough_res_to_buy(session,__sim_player)* vector[10]
+    __sim_player = find_sim_player(session, player)
+    lin = vp_heuristic(session, __sim_player) * vector[0]
+    lin += harbors_heuristic(session, __sim_player) * vector[1]
+    lin += prefer_resources_in_each_part(session, __sim_player) * vector[2]
+    lin += roads_heuristic(session, __sim_player) * vector[3]
+    lin += settles_heuristic(session, __sim_player) * vector[4]
+    lin += cities_heuristic(session, __sim_player) * vector[5]
+    lin += resources_diversity_heuristic(session, __sim_player) * vector[6]
+    lin += build_in_good_places(session, __sim_player) * vector[7]
+    lin += dev_cards_heuristic(session, __sim_player) * vector[8]
+    lin += game_won_heuristic(session, __sim_player) * vector[9]
+    lin += enough_res_to_buy(session, __sim_player) * vector[10]
     return lin
 
 

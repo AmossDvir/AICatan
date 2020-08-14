@@ -133,7 +133,7 @@ def predict(model, session_batch):
     """
     predicted = np.zeros((len(session_batch), 4))
     for i, session in enumerate(session_batch):        
-        legal_moves = session.get_possible_moves(session.current_player())
+        legal_moves = session.possible_moves(session.current_player())
         move_preds = get_move_predictions(model, legal_moves, session)
 
         chosen_move_index = move_preds[:, 0].argmax()
