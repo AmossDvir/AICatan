@@ -8,7 +8,7 @@ from random import choice
 from Heuristics import *
 from copy import deepcopy
 
-import tensorflow as tf
+#import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense
 from DQN import get_move_predictions
