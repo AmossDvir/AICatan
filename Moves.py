@@ -138,6 +138,9 @@ class ThrowMove(Move):
     def throws(self) -> Hand.Hand:
         return self.__hand
 
+    def info(self) -> str:
+        return f'[MOVE] player = {self.player()}, type = {self.get_type()}, throws = {self.throws()}'
+
 
 class BuildMove(Move):
     def __init__(self, player: Player.Player, btype: Consts.PurchasableType, location: int,

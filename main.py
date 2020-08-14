@@ -18,7 +18,7 @@ AGENTS = {
     ONE_MOVE_AGENT: Agent.OneMoveHeuristicAgent(),
     HUMAN_AGENT: Agent.HumanAgent(),
     PROBABILITY_AGENT: Agent.ProbabilityAgent(),
-    # EXPROB_AGENT: Agent.ExpectimaxProbAgent(relative_everything_heuristic)
+    EXPROB_AGENT: Agent.ExpectimaxProbAgent(Heuristics.everything_heuristic)
 }
 DEFAULT_AGENTS = [RANDOM_AGENT]
 PLAYER_NAMES = ['Roy', 'Boaz', 'Oriane', 'Amoss']
@@ -68,27 +68,13 @@ def main(log: str = None, num_players: int = DEFAULT_NUM_PLAYERS, agents: List[s
 
 
 if __name__ == '__main__':
-    # args = get_args()
-    # main(**vars(args))
-    data = {}
-    data['Oriane'] = 0
-    data['Amoss'] = 0
-    data['Boaz'] = 0
-    data['Roy'] = 0
-
-    for _ in range(80):
-        a1 = Agent.OneMoveHeuristicAgent(Heuristics.heuristic_comb1)
-        a2 = Agent.OneMoveHeuristicAgent(Heuristics.heuristic_comb2)
-        a3 = Agent.OneMoveHeuristicAgent(Heuristics.heuristic_comb3)
-        a4 = Agent.OneMoveHeuristicAgent(Heuristics.heuristic_comb4)
-        p1 = Player.Player(a1, 'Oriane')
-        p2 = Player.Player(a2, 'Amoss')
-        p3 = Player.Player(a3, 'Boaz')
-        p4 = Player.Player(a4, 'Roy')
-        session = GameSession.GameSession(None, p1, p2, p3, p4)
-        session.run_game()
-        print(session.winner())
-        data[str(session.winner())] += 1
-        print(session.board())
-
-    print(data)
+    args = get_args()
+    main(**vars(args))
+    # a = Agent.RandomAgent()
+    # a2 = Agent.ProbabilityAgent()
+    # p1 = Player.Player(a, 'Oriane')
+    # p2 = Player.Player(a, 'Amoss')
+    # p3 = Player.Player(a, 'Boaz')
+    # p4 = Player.Player(a2, 'Roy')
+    # session = GameSession.GameSession(None, p1, p2, p3, p4)
+    # session.run_game()

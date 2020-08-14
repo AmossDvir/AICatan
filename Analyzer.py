@@ -69,7 +69,7 @@ import Heuristics
 
 #======================= analyze Huerstics - one move:
 
-#my_one_move = open("one_move.txt", "w")
+my_one_move = open("one_move.txt", "w")
 # my_one_move.write("everything_heuristic againt prob\n")
 # for i in range(10):
 #     E1 = Player.Player(Agent.OneMoveHeuristicAgent(Heuristics.everything_heuristic), "E1")
@@ -80,14 +80,14 @@ import Heuristics
 #     game.run_game()
 #     my_one_move.write(game.winning_player.get_name() + '\n')
 
-#ֳmy_one_move.write("exptimaxprob\n")
-for i in range(1):
+my_one_move.write("exptimaxprob\n")
+for i in range(20):
     E = Player.Player(Agent.ExpectimaxProbAgent(Heuristics.everything_heuristic), "E")
     RE = Player.Player(Agent.ExpectimaxProbAgent(Heuristics.relative_everything_heuristic), "RE")
-    P = Player.Player(Agent.HumanAgent("oriane"), "P")
+    P = Player.Player(Agent.ExpectimaxProbAgent(Heuristics.probability_score_heuristic), "P")
     R4 = Player.Player(Agent.RandomAgent(), "R4")
     game = GameSession.GameSession(None, E, RE, P, R4)
     game.run_game()
- #   my_one_move.write(game.winning_player.get_name() + '\n')
+    my_one_move.write(game.winning_player.get_name() + '\n')
 
-#my_one_move.close()
+my_one_move.close()

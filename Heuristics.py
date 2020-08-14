@@ -131,8 +131,11 @@ def relative_of(heuristic, session: GameSession, player: Player) -> float:
             opp_vals.append(heuristic(session, p))
         else:
             my_val += heuristic(session, p)
-
-    return my_val / (sum(opp_vals) / len(opp_vals))
+    avg_opp = sum(opp_vals) / len(opp_vals)
+    if avg_opp == 0:
+        return INF
+    else:
+        return my_val / avg_opp
 
 
 def prefer_resources_in_each_part(session: GameSession, player: Player):
@@ -263,8 +266,6 @@ def probability_score_heuristic(session: GameSession, player: Player) -> float:
     return session.board().probability_score(player) + \
            session.board().expectation_score(player) + \
            session.potential_probability_score(player)
-
-
 
 
 def road_len_heuristic(session: GameSession, player: Player) -> float:
@@ -424,6 +425,7 @@ def main_heuristic(session:GameSession,player:Player):
 
     return __builder_characteristic
     # return __diversity + __build + __won_game + __dev
+
 
 def linear_heuristic(session:GameSession,player:Player, vector=[1]*11):
     """
