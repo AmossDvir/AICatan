@@ -117,10 +117,15 @@ class OneMoveHeuristicAgent(Agent):
         self.__randy = RandomAgent()
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+        hval = 0
         move_values = []
         # print('&&&&&&&&')
         # print(*(m.info() for m in moves), sep='\n')
         for move in moves:
+            # calculate the heuristic of monopoly dev card before it happens:
+            if move.get_type() == Moves.MoveType.USE_DEV:
+                if move.uses() == Consts.DevType.MONOPOLY:
+                    hval += monopoly_heuristic(state, player, deepcopy(move))
             # print(move.info())
             # new_state = state.simulate_move(move)
             new_state = deepcopy(state)
@@ -131,10 +136,12 @@ class OneMoveHeuristicAgent(Agent):
             for p in new_state.players():
                 if p == move.player():
                     curr_p = p
+
             hval = self.__heur_func(new_state, curr_p)
+            # improve trading abilities:
             if move.get_type() == Moves.MoveType.TRADE:
-                print("before: ",player,player.resource_hand())
-                hval += smart_trade_heuristic(new_state, curr_p, move)
+                hval += smart_trade_heuristic(new_state, curr_p, deepcopy(move))
+
             # print('H =', hval)
             move_values.append(hval)
             del new_state

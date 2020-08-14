@@ -83,7 +83,7 @@ class Hand:
         if all([type for type in Consts.ResourceType if all(self.cards_of_type(type))]):
             return set(self.resources()).pop()
 
-    def get_num_instances_of_type(self,type:Consts.ResourceType):
+    def get_num_instances_of_type(self,type:Consts.ResourceType) -> int:
 
         return len([1 for res in self.resources() if res == type])
 
@@ -100,3 +100,18 @@ class Hand:
 
     def __eq__(self, other: Hand) -> bool:
         return other.contains(self) and self.contains(other)
+
+    def map_resources_by_quantity(self) -> dict:
+        """
+        maps the hand of the player to a dictionary:
+        keys: resources, values: occurences
+        :return:
+        """
+        res_values = {}
+        for type in list(Consts.ResourceType)[0:5]:
+            res_values[type] = 0
+            for res in self.resources():
+                if res == type:
+                    res_values[type] += 1
+
+        return res_values
