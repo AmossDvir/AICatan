@@ -96,8 +96,11 @@ def relative_of(heuristic, session: GameSession, player: Player) -> float:
             opp_vals.append(heuristic(session, p))
         else:
             my_val += heuristic(session, p)
-
-    return my_val / (sum(opp_vals) / len(opp_vals))
+    avg_opp = sum(opp_vals) / len(opp_vals)
+    if avg_opp == 0:
+        return INF
+    else:
+        return my_val / avg_opp
 
 
 def prefer_resources_in_each_part(session: GameSession, player: Player):

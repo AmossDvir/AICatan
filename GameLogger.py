@@ -11,3 +11,4 @@ class GameLogger:
 
     def write_session(self, session):
         pickle.dump(session, self.log_file)
+

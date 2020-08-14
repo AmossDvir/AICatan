@@ -157,7 +157,7 @@ class ProbabilityAgent(Agent):
             # get heuristic value on new_state
             for p in new_state.players():
                 if p.get_id() == player.get_id():
-                    move_vals.append(state.board()._probability_score(p) + state.board()._expectation_score(p))
+                    move_vals.append(probability_score_heuristic(state, player))
 
         max_val = max(move_vals)
         argmax_vals_indices = [i for i, val in enumerate(move_vals) if val == max_val]
