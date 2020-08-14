@@ -83,6 +83,10 @@ class Hand:
         if all([type for type in Consts.ResourceType if all(self.cards_of_type(type))]):
             return set(self.resources()).pop()
 
+    def get_num_instances_of_type(self,type:Consts.ResourceType):
+
+        return len([1 for res in self.resources() if res == type])
+
     def get_cards_types(self):
         return set(self.resources())
 

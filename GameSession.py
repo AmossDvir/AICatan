@@ -917,14 +917,12 @@ class GameSession:
 
                 else:
 
+
                     player.receive_cards(cards_received)
                     self.__res_deck.remove(cards_received)
-                player.receive_cards(cards_received)
-                self.__res_deck.remove(cards_received)
 
-                cards_given = move.gives()
-                player.throw_cards(cards_given)
-                self.__res_deck.insert(cards_given)
+                    player.throw_cards(cards_given)
+                    self.__res_deck.insert(cards_given)
 
                 if printout:
                     dprint(f'[APPLY MOVE] player {player} traded {cards_given} for {cards_received}')

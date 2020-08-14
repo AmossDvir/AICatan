@@ -8,10 +8,10 @@ from random import choice
 from Heuristics import *
 from copy import deepcopy
 
-import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense
-from DQN import get_move_predictions
+# import tensorflow as tf
+# from keras.models import Sequential
+# from keras.layers import Dense
+# from DQN import get_move_predictions
 
 class AgentType(Enum):
     RANDOM = 0
@@ -132,6 +132,9 @@ class OneMoveHeuristicAgent(Agent):
                 if p == move.player():
                     curr_p = p
             hval = self.__heur_func(new_state, curr_p)
+            if move.get_type() == Moves.MoveType.TRADE:
+                print("before: ",player,player.resource_hand())
+                hval += smart_trade_heuristic(new_state, curr_p, move)
             # print('H =', hval)
             move_values.append(hval)
             del new_state
@@ -157,7 +160,7 @@ class ProbabilityAgent(Agent):
             # get heuristic value on new_state
             for p in new_state.players():
                 if p.get_id() == player.get_id():
-                    move_vals.append(state.board()._probability_score(p) + state.board()._expectation_score(p))
+                    move_vals.append(state.board().probability_score(p) + state.board().expectation_score(p))
 
         max_val = max(move_vals)
         argmax_vals_indices = [i for i, val in enumerate(move_vals) if val == max_val]
@@ -262,13 +265,13 @@ class ExpectimaxProbAgent(Agent):
                                               session)
             session.simulate_game(move_played)
 
-class DQNAgent(Agent):
-    network = tf.keras.models.load_model("current_model")
-
-    def __init__(self):
-        super().__init__(AgentType.DQN)
-
-    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
-        move_preds = get_move_predictions(DQNAgent.network, moves, state)
-        chosen_move_index = move_preds[:, 0].argmax()
-        return moves[chosen_move_index]
+# class DQNAgent(Agent):
+#     network = tf.keras.models.load_model("current_model")
+#
+#     def __init__(self):
+#         super().__init__(AgentType.DQN)
+#
+#     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+#         move_preds = get_move_predictions(DQNAgent.network, moves, state)
+#         chosen_move_index = move_preds[:, 0].argmax()
+#         return moves[chosen_move_index]

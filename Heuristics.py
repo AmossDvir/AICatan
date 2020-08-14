@@ -46,19 +46,27 @@ def harbors_heuristic(session: GameSession, player: Player):
     """
     return len(player.harbors())/9
 
-def keep_res_you_cant_achieve(session: GameSession, player: Player,move:Moves):
+def smart_trade_heuristic(session: GameSession, player: Player,move:Moves):
     """
-    prefer keeping the resources you can't achieve from dice
+    prefer trading resources for resources you can't get from dice
     :return:
     """
+    p = find_sim_player(session,player)
+    res_hand = p.resource_hand()
+    score = 0
     if move.get_type() == Moves.MoveType.TRADE:
         __board = session.board()
-        types_res = __board.resources_player_can_get(player)
-        print(types_res.pop(),move.gives(),move.gets())
+        res_types_from_dice = __board.resources_player_can_get(player)
+        gets_type = move.gets().get_cards_types().pop()
+        num_instances_gets_type = res_hand.get_num_instances_of_type(gets_type)
+
+        # if what you get from trading you can't achieve from dice:
+        if gets_type not in res_types_from_dice:
+            # raise score:
+            score +=  1/(2*num_instances_gets_type)
 
 
-        # todo: continue writing
-    return 0
+    return score
 
 def game_won_heuristic(session: GameSession, player: Player):
     """
@@ -335,7 +343,7 @@ def affordable_purchasables_heuristic(session, player):
     return num_affordable / 15
 
 
-def main_heuristic(session:GameSession,player:Player,move:Moves):
+def main_heuristic(session:GameSession,player:Player):
     """
     calculates of score of each and every heuristic
     and returns a linear combination of them
@@ -357,7 +365,7 @@ def main_heuristic(session:GameSession,player:Player,move:Moves):
     __won_game = game_won_heuristic(session,__sim_player)
     __enough_res_to_buy = enough_res_to_buy(session,__sim_player)*ENOUGH_RES_TO_BUY
 
-    keep_res_you_cant_achieve(session,__sim_player,move)
+    # keep_res_you_cant_achieve(session,__sim_player,move)
 
     #
     #     print("////////////////////")

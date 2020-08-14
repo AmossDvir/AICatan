@@ -2,3 +2,4 @@
 __pycache__
 result_analyzer.xlsx
 ~$result_analyzer.xlsx
+/venv/
