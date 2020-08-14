@@ -11,12 +11,11 @@ from Board import *
 from Moves import *
 from Dice import PROBABILITIES
 from Hand import Hand
-from tqdm import tqdm
 
 from keras.models import Sequential
 from keras.layers import Dense
 
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 INPUT_SIZE = 698
 # Overall size = 698:
 
@@ -273,22 +272,19 @@ def get_win_status(session):
         return vps.index(max(vps))
 
 def train_batch(model, session_batch):
-    if len(session_batch) == 0:
-        return
     batch_size = len(session_batch)
     batch = np.zeros((batch_size, INPUT_SIZE))
     for i in range(batch_size):
-        batch[i] = session_to_input(session_batch[i])
+        batch[i] = session_to_input(sessions[i])
     pred = predict(model, session_batch)
-    model.fit(batch, pred, batch_size=batch_size, verbose=0)
-
+    model.fit(batch, pred, batch_size=batch_size)
 
 if __name__ == "__main__":
     model = tf.keras.models.load_model("current_model")
-    sessions = []
     for i in range(100):
-        # print(f'\n\nOpening file log{i}.pkl:\n')
+        print(f'\n\nOpening file log{i}.pkl:\n')
         file = open(f'log{i}.pkl', 'rb')
+        sessions = []
         # Load the sessions:
         while(True):
             try:
@@ -296,17 +292,14 @@ if __name__ == "__main__":
             except EOFError:
                 break
         # model = make_model()
-    print(len(sessions))
 
-    for i in tqdm(range(len(sessions) // BATCH_SIZE)):
-        import time
-        start = time.time()
-        train_batch(model, sessions[i * BATCH_SIZE: (i + 1) * BATCH_SIZE])
-        print(f'batch {i} took {time.time() - start}')
-    # The leftovers (its important since we actually inject rewards only in the last session):
-    if len(sessions) % BATCH_SIZE != 0:
+        for i in range(len(sessions) // BATCH_SIZE):
+            train_batch(model, sessions[i * BATCH_SIZE: (i + 1) * BATCH_SIZE])
+        # The leftovers (its important since we actually inject rewards only in the last session):
         train_batch(model, sessions[(i + 1) * BATCH_SIZE:])
-    model.save('current_model')
+        model.save('current_model')
+
+    
 
 
 
