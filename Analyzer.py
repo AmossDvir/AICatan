@@ -88,6 +88,6 @@ for i in range(20):
     R4 = Player.Player(Agent.RandomAgent(), "R4")
     game = GameSession.GameSession(None, E, RE, P, R4)
     game.run_game()
-    my_one_move.write(game.winning_player.get_name() + '\n')
+    my_one_move.write(str(game.winning_player) + '\n')
 
 my_one_move.close()

@@ -23,6 +23,9 @@ DEFAULT_LINEAR_COMB = (1,) * DEFAULT_LINEAR_COMB_SIZE
 
 
 class Heuristic:
+    """
+    a superior class, creates an Heuristic object
+    """
     def __init__(self, normalization: float = 1):
         self.norm = normalization
 
@@ -564,6 +567,11 @@ def settles_heuristic(session: GameSession, player: Player):
 
 
 def avoid_throwing_cards(session: GameSession, player: Player):
+    """
+    prefer use cards if the player has more than 7 and not keeping them in hand
+    :return: a negative number decreasing
+     relatively to the number of cards the player has
+    """
     res_size = player.resource_hand().size()
     max_cards = Consts.MAX_CARDS_IN_HAND
     if res_size > max_cards:
@@ -680,6 +688,10 @@ def hand_size_heuristic(session, player):
 
 
 def hand_diversity_heuristic(session, player):
+    """
+    prefer having more diversity in the player's hand
+    :return:
+    """
     max_resource_types = len(Consts.YIELDING_RESOURCES)
     num_unique_resources = 0
     for resource in Consts.ResourceType:

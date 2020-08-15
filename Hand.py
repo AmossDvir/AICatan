@@ -113,10 +113,11 @@ class Hand:
         """
         return self.__cards
 
-    def get_num_instances_of_type(self, rtype: Consts.ResourceType) -> int:
-        return self.__cards.get(rtype)
 
     def get_cards_types(self):
+        """
+        :return: the types of cards the current Hand has
+        """
         return set(self.resources())
 
     def __iter__(self) -> Union[Consts.DevType, Consts.ResourceType]:

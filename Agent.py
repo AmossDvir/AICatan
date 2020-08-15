@@ -222,8 +222,7 @@ class OptimizedHeuristicAgent(Agent):
             __board = session.board()
             res_types_from_dice = __board.resources_player_can_get(player)
             gets_type = move.gets().get_cards_types().pop()
-            num_instances_gets_type = res_hand.get_num_instances_of_type(
-                gets_type)
+            num_instances_gets_type = res_hand.cards_of_type(gets_type)
 
             # if what you get from trading you can't achieve from dice:
             if gets_type not in res_types_from_dice:

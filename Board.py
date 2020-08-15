@@ -75,7 +75,7 @@ class Board:
         :return: Hand, the potential cards the player can get from his nodes
         by rolling dice
         """
-        yielding_nodes = player.cities_and_settles_nodes()
+        yielding_nodes = player.city_nodes() + player.settlement_nodes()
         types = set()
         for node in yielding_nodes:
             node_types = self.resource_distributions_by_node(node).get_cards_types()

@@ -4,6 +4,7 @@ from typing import List
 
 
 class Colors:
+
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     TEAL = '\033[96m'
@@ -29,6 +30,9 @@ def colorify(st):
 
 
 class HexTile:
+    """
+    Class represents a tile in the hexgrid (board)
+    """
     def __init__(self, hex_id: int, resource: Consts.ResourceType, token: int, has_robber: bool = False):
         self.__hex_id = hex_id
         self.__resource = resource
