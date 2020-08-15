@@ -10,6 +10,7 @@ class Hand:
     represents a bundle of resources (or one), and number of operations that
     can be made (adding cards, removing cards, etc.)
     """
+
     def __init__(self, *cards: Consts.CardType):
         self.__cards = defaultdict(int)
         for card in cards:
@@ -21,11 +22,14 @@ class Hand:
             self.__cards[card] += 1
 
     def remove(self, cards: Hand) -> None:
-        """Remove cards (as a hand object) from this hand. Raises ValueError if not enough cards are present"""
+        """Remove cards (as a hand object) from this hand. Raises ValueError
+        if not enough cards are present"""
         for card, amount in cards.__cards.items():
             num_in_hand = self.__cards[card]
             if num_in_hand < amount:
-                raise ValueError(f'{num_in_hand} {card} cards in hand, tried to remove {amount}')
+                raise ValueError(
+                    f'{num_in_hand} {card} cards in hand, tried to remove '
+                    f'{amount}')
             self.__cards[card] -= amount
 
     def remove_as_much(self, cards: Hand) -> Hand:
@@ -85,7 +89,8 @@ class Hand:
         return Hand(*(c for c in self if card == c))
 
     def cards_of_class(self, ctype: Type[Consts.CardType]) -> Hand:
-        """return iterator of cards in hand that correspond to class ctype (i.e. ctype == DevType)"""
+        """return iterator of cards in hand that correspond to class ctype (
+        i.e. ctype == DevType)"""
         return Hand(*(card for card in self if isinstance(card, ctype)))
 
     def remove_random_card(self) -> Hand:
