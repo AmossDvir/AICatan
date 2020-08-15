@@ -2,7 +2,8 @@ import GameConstants as Consts
 import hexgrid
 from typing import List
 
-class bcolors:
+
+class Colors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     TEAL = '\033[96m'
@@ -17,14 +18,14 @@ class bcolors:
 
 def colorify(st):
     colors = {
-        'FOREST': bcolors.GREEN,
-        'SHEEP': bcolors.TEAL,
-        'WHEAT': bcolors.WARNING,
-        'BRICK': bcolors.FAIL,
-        'DESERT': bcolors.WHITE,
-        'ORE': bcolors.OKBLUE
+        'FOREST': Colors.GREEN,
+        'SHEEP': Colors.TEAL,
+        'WHEAT': Colors.WARNING,
+        'BRICK': Colors.FAIL,
+        'DESERT': Colors.WHITE,
+        'ORE': Colors.OKBLUE
     }
-    return colors[str(st)] + str(st) + bcolors.ENDC
+    return colors[str(st)] + str(st) + Colors.ENDC
 
 
 class HexTile:
@@ -62,7 +63,8 @@ class HexTile:
         self.__has_robber = val
 
     def info(self) -> str:
-        return f'[HEX] resource = {self.__resource:>8}, hex_id = {hex(self.__hex_id):>5}, token = {self.__token:2}, robber ? {self.__has_robber}'
+        return f'[HEX] resource = {self.__resource:>8}, ' \
+               f'hex_id = {hex(self.__hex_id):>5}, token = {self.__token:2}, robber ? {self.__has_robber}'
 
     def __str__(self):
         return colorify(self.__resource)

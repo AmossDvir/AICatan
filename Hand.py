@@ -1,5 +1,5 @@
 from __future__ import annotations  # for Hand type hints inside Hand
-from typing import Generator, Type, Union
+from typing import Type, Union
 import GameConstants as Consts
 from collections import defaultdict
 from random import choice
@@ -72,24 +72,25 @@ class Hand:
         self.remove(to_remove)
         return to_remove
 
+    def map_resources_by_quantity(self) -> dict:
+        """
+        maps the hand of the player to a dictionary:
+        keys: resources, values: occurences
+        :return:
+        """
+        return self.__cards
+
+    def get_num_instances_of_type(self, rtype: Consts.ResourceType) -> int:
+        return self.__cards.get(rtype)
+
+    def get_cards_types(self):
+        return set(self.resources())
+
     def __iter__(self) -> Union[Consts.DevType, Consts.ResourceType]:
         """returns iterator that iterates over every card type in the hand"""
         for card, count in self.__cards.items():
             for _ in range(count):
                 yield card
-
-    def get_same_cards_type(self):
-        # see if all cards are the same:
-        if all([type for type in Consts.ResourceType if all(self.cards_of_type(type))]):
-            return set(self.resources()).pop()
-
-    def get_num_instances_of_type(self,type:Consts.ResourceType) -> int:
-
-        return len([1 for res in self.resources() if res == type])
-
-    def get_cards_types(self):
-        return set(self.resources())
-
 
     def __str__(self) -> str:
         """a printable representation of the hand"""
@@ -100,18 +101,3 @@ class Hand:
 
     def __eq__(self, other: Hand) -> bool:
         return other.contains(self) and self.contains(other)
-
-    def map_resources_by_quantity(self) -> dict:
-        """
-        maps the hand of the player to a dictionary:
-        keys: resources, values: occurences
-        :return:
-        """
-        res_values = {}
-        for type in list(Consts.ResourceType)[0:5]:
-            res_values[type] = 0
-            for res in self.resources():
-                if res == type:
-                    res_values[type] += 1
-
-        return res_values
