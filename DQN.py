@@ -18,32 +18,63 @@ from keras.layers import Dense
 
 BATCH_SIZE = 128
 INPUT_SIZE = 698
-# Overall size = 698:
+HAND_VEC_SIZE = 37
+"""
+Here we make and train our neural network. The netowrk is trained to predict the chance
+of all the players to win the game. The input is a representation of the board as a numpy
+vector (more details below), and the output is size 4 vector with (idealy) the percent of
+every player to win the game.
 
-# Cards Overall:                  37
-# Agent's resources Hand:         5
-# Other players hands:            15
-# Agent's (closed) dev card Hand: 5
-# Other players hidden dev cards: 3
-# Open dev cards (non-Knights):   5
-# Open knights (per player):      4
+Important points:
+The name of the module is wrong, we are not evaluating state-action pairs, we are evaluating states.
+therefore this isn't a q-function approximation, this is a value function estimation.
 
-# Board Overall:                  637
-# Boolean hex_type (19x6):        114
-# Boolean city/settlemets (54x4): 216
-# Boolean roads (72x4):           288
-# Boolean Robber                  19
+Also since catan is not a game of perfect information we cannot design the network to be symmetric to
+the players (if we want to use it as an agent), so the first player is always the current player.
 
-# Features Overall:               24
-# Player vp                       4
-# Player access to resource(4*5)  20
+The bellman optimality equation we are using:
+(From Sutton and Barto, first edition, page 76)
+V*(s) = max[a]( sum[s']( P[a,s->s'] (R + gammaV*(s)))))
+Where the reward (R) is 1 for winning and zero otherwise, and gamma = 1.
+
+In the beginning we did the argmax computation during training. This is the train_batch
+function in this file. This was very slow, so to speed things up we later shifted to
+calculating the children states of every state in the training data only once, that
+version is in TrainingData.py module, and much faster.
+
+Input vector breakdown:
+
+Overall size = 698:
+
+Cards Overall:                  37
+Agent's resources Hand:         5
+Other players hands:            15
+Agent's (closed) dev card Hand: 5
+Other players hidden dev cards: 3
+Open dev cards (non-Knights):   5
+Open knights (per player):      4
+
+Board Overall:                  637
+Boolean hex_type (19x6):        114
+Boolean city/settlemets (54x4): 216
+Boolean roads (72x4):           288
+Boolean Robber                  19
+
+Features Overall:               24
+Player vp                       4
+Player access to resource(4*5)  20
 
 
-# Notice that we have to change the player's order since they are not symmetrical
-# since we have more information about the current player, so regardless of the
-# players numbering, the current player is always the first
+Notice that we have to change the player's order since they are not symmetrical
+since we have more information about the current player, so regardless of the
+players numbering, the current player is always the first
+"""
 
 def session_to_input(session):
+    """
+    Takes a GameSession object and turns it into numpy vector to use as an input
+    for the neural network.
+    """
     all_players = get_player_order(session)
     hand_vec = get_hand_vec(all_players)
     board = session.board()
@@ -53,8 +84,11 @@ def session_to_input(session):
     return data
 
 def get_hand_vec(players):
-    hand_data = np.zeros(37, np.uint8)
-    # Resources Hand:
+    """
+    Make a numpy vector based on the player's hands.
+    """
+    hand_data = np.zeros(HAND_VEC_SIZE, np.uint8)
+    # Resources Hand 20:
     for i, player in enumerate(players):
         for j, resc in enumerate(YIELDING_RESOURCES):
             hand_data[i*5 + j] = len(player.resource_hand().cards_of_type(resc))
@@ -76,6 +110,9 @@ def get_hand_vec(players):
     return hand_data
 
 def get_board_vec(board, players):
+    """
+    Makes a numpy vector based on the board.
+    """
     edges = list(hexgrid.legal_edge_coords()) # So we can get the indices
     nodes = list(hexgrid.legal_node_coords()) # same
     # Tiles
@@ -102,6 +139,9 @@ def get_board_vec(board, players):
     return np.hstack([tile_data, city_sett_data, roads_data, robber_data])
 
 def get_feature_vec(board, players):
+    """
+    Makes additional feature data for the neural network 
+    """
     token_dict = {i: PROBABILITIES[i]*36 for i in PROBABILITIES}
     res_types = [ResourceType.FOREST, ResourceType.ORE, ResourceType.BRICK, ResourceType.SHEEP, ResourceType.WHEAT]
     hexes = board.hexes()
@@ -118,6 +158,9 @@ def get_feature_vec(board, players):
 
 
 def make_model():
+    """
+    Makes a new Keras neural network.
+    """
     model = Sequential()
     model.add(Dense(1000, input_shape=(INPUT_SIZE,), activation='relu'))
     model.add(Dense(1000, activation='relu'))
@@ -127,6 +170,7 @@ def make_model():
 
 def predict(model, session_batch):
     """
+    Predicting the outcome of a batch of games
     :param model: The keras model we are are training
     :param session_batch: A list of BATCH_SIZE sessions
     :return: A (BATCH_SIZE, 4) np array of the predicted values
@@ -142,6 +186,7 @@ def predict(model, session_batch):
 
 def get_move_predictions(model, legal_moves, session):
     """
+    Uses the given model to predict the values of the given moves.
     Returns a np array of shape (len(moves), 4)
     """
     sessions, prob_dict = open_prediction_tree(legal_moves, session)
@@ -166,9 +211,11 @@ def get_move_predictions(model, legal_moves, session):
 
 def open_prediction_tree(moves, originel_session):
     """
-    returns a tuple:
-    session list,
-    dict from moves to dicts, each from index number of a session to probability
+    For the given session, opens the immediate move tree and predict the children states.
+    This is done for the argmax part of the value iteration (we need to train the network
+    to evaluate the board state like the expectency of the board after the best move).
+    returns a tuple: session list, and dict from moves to dicts, each from index number
+    of a session to probability
     """
     sessions = []
     move_dict = {}
@@ -273,6 +320,9 @@ def get_win_status(session):
         return vps.index(max(vps))
 
 def train_batch(model, session_batch):
+    """
+    Uses list of of sessions to train the model.
+    """
     if len(session_batch) == 0:
         return
     batch_size = len(session_batch)

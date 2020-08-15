@@ -4,7 +4,29 @@ from GameSession import *
 from DQN import *
 from tqdm import tqdm
 
+"""
+The value iteration algorithm we are using requires us to use max over several outputs.
+We started by doing this in every training epoch, but this proved very slow. instead we
+decided to pre-process the data, calculating the children of the states beforehand and
+saving only the input vectors and chances for every transition.
+
+Full explanation of the network can be found in DQN.py.
+
+Each instance have:
+self.x: The vectors representing the base states,
+self.expanded: The vectors representing the children of the base states
+self.won_expanded: The winning status of the expanded states
+self.child_list: The information requires to train the network using the bellman equation:
+the i'th element in child list is a list for every legal move of the i'th session in self.x,
+inside each there is tuples with transition probabilty to the state and and index number of
+the state in self.expanded.
+"""
+
 class TrainingData:
+    """
+    Representing proccessed data. A inatance of this class contains the input vectors for the base_session,
+    the input vectors for the children,  and the information required to train the network using the bellman equation.
+    """
     def __init__(self, sessions):
         self.x = np.zeros((len(sessions), INPUT_SIZE))
         expanded_sessions = []
@@ -24,6 +46,9 @@ class TrainingData:
             self.won_expanded[i] = get_win_status(session)
 
     def fit(self, model):
+        """
+        Uses the information in this instance to train the givel model
+        """
         predict_expanded = model.predict(self.expanded)
         fix_rewards(predict_expanded, self.won_expanded)
         y = np.zeros((self.x.shape[0], 4))

@@ -19,6 +19,13 @@ BASE_VECTOR = [2, 0.8, 0.2, 0.6, 0.7, 2.5, 0.5, 5, 2, 1, 1]
 ONE_VECTOR = [0.26, 0.22, 0.1, 0.56, -0.3, 2.78, 0.21, 6.05, 1.72, 1.85, 0.05]
 LATEST_VECTOR = [0.35, 0.2, 0.58, 0.75, 0.14, 2.61, 0.44, 5.3, 2.02, 1.28, 1.68]
 
+"""
+The vectors are telling the agent how much value to give to each heuristic.
+We first evaluate the agents based on the vector through several games (this
+is our 'fitness function'), and them remove the worst performing vector, make
+a new vector based of the two best vectors and mutate the remaining vector.
+"""
+
 def main():
     vecs = [BASE_VECTOR.copy() for _ in range(2)] + [ONE_VECTOR.copy() for _ in range(2)]
     for vec in vecs:
@@ -32,6 +39,10 @@ def main():
 def improve(vecs, wins, vps):
     """
     We merge the two best vectors, delete the worst one and mutate the mediocre one
+    :param vecs: The vectors we are improving
+    :param wins: The amount of games every agent based on that vector on [list]
+    :param vps: The sum of the victory points the agent based on the vector had
+    :return: None [We improve the given vectors]
     """
     # Order according to wins, break ties with vps:
     order_vecs = [0, 1, 2, 3]
@@ -67,9 +78,15 @@ def play_round(vectors):
     return wins, vps
 
 def get_random_vec():
+    """
+    Returns a random vector around the default mean
+    """
     return [random.gauss(GENERATING_MEAN, GENERATING_DEVIATION) for _ in range(VECTOR_SIZE)]
 
 def reproduce(vector1, vp1, vector2, vp2):
+    """
+    Combines two vector to create a new vector
+    """
     percent1 = vp1 / (vp1 + vp2) # The vector that have more VP gets more genetic material
     percent2 = vp2 / (vp1 + vp2)
     child = [(vector1[i] * percent1) + (vector2[i] * percent2) for i in range(VECTOR_SIZE)]
@@ -78,16 +95,24 @@ def reproduce(vector1, vp1, vector2, vp2):
     return child
 
 def mutate(vector, deviation=MUTATE_DEVIATION):
-    # slightly alter a vector:
+    """
+    Slightly alter a vector.
+    """
     for i in range(VECTOR_SIZE):
         # Each value is sampled from gaussian distribution where the previous value is the mean:
         vector[i] = random.gauss(vector[i], deviation)
 
 def vec_to_agent(vector):
+    """
+    Returns a new agent based on the given vector
+    """
     heur = lambda session, player: Heuristics.linear_heuristic(session, player, vector)
     return Agent.OneMoveHeuristicAgent(heuristic=heur)
 
 def get_latest_heuristic():
+    """
+    Returns the latest heuristic that was found with the genetic algorithm
+    """
     return lambda session, player: Heuristics.linear_heuristic(session, player, LATEST_VECTOR)
 
 
