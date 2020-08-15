@@ -1,6 +1,6 @@
 import GameConstants as Consts
-from Hand import Hand
-from Player import Player
+import Hand
+import Player
 
 
 class Buildable:

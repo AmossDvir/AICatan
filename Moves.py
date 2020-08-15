@@ -1,7 +1,7 @@
 from __future__ import annotations
 import GameConstants as Consts
-from Player import Player
-from Hand import Hand
+import Player
+import Hand
 from enum import Enum
 from typing import Union
 
@@ -97,7 +97,7 @@ class UseYopDevMove(UseDevMove):
     """A Move that uses a Year of Plenty Development Card"""
     def __init__(self, player: Player, *resources: Consts.ResourceType):
         super().__init__(player, Consts.DevType.YEAR_OF_PLENTY)
-        self.__resources = Hand(*resources)
+        self.__resources = Hand.Hand(*resources)
         assert len(resources) == Consts.YOP_NUM_RESOURCES
 
     def resources(self) -> Hand:

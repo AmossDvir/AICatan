@@ -1,14 +1,16 @@
 from enum import Enum
 import Moves as Moves
 from Hand import Hand
-from typing import List, Callable
+from typing import List
 from random import choice
-from Heuristics import *
+import Heuristics
+import Player
+import GameSession
 from copy import deepcopy
 
 import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense
+# from keras.models import Sequential
+# from keras.layers import Dense
 from DQN import get_move_predictions
 
 
@@ -103,9 +105,9 @@ class HumanAgent(Agent):
 
 class OneMoveHeuristicAgent(Agent):
     # Open the tree only one move forward and apply the given heuristic on it
-    def __init__(self, heuristic=main_heuristic):
+    def __init__(self, heuristic: Heuristics.Heuristic = Heuristics.Main()):
         super().__init__(AgentType.ONE_MOVE)
-        self.__heur_func = heuristic
+        self.__h = heuristic
         self.__randy = RandomAgent()
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
@@ -117,7 +119,7 @@ class OneMoveHeuristicAgent(Agent):
             for p in new_state.players():
                 if p == move.player():
                     curr_p = p
-            hval = self.__heur_func(new_state, curr_p)
+            hval = self.__h.value(new_state, curr_p)
             move_values.append(hval)
             del new_state
 
@@ -131,7 +133,7 @@ class OneMoveHeuristicAgent(Agent):
 class ProbabilityAgent(Agent):
     def __init__(self):
         super().__init__(AgentType.PROBABILITY)
-        self.__harry = OneMoveHeuristicAgent(probability_score_heuristic)
+        self.__harry = OneMoveHeuristicAgent(Heuristics.Probability())
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         return self.__harry.choose(moves, player, state)
@@ -139,9 +141,9 @@ class ProbabilityAgent(Agent):
 
 class OptimizedHeuristicAgent(Agent):
     # using the one move heuristic method
-    def __init__(self, heuristic=heuristic_comb1):
+    def __init__(self, heuristic=Heuristics.AmossComb1()):
         super().__init__(AgentType.OPTIMIZED)
-        self.__heur_func = heuristic
+        self.__h = heuristic
         self.__randy = RandomAgent()
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
@@ -158,7 +160,7 @@ class OptimizedHeuristicAgent(Agent):
                 if p == move.player():
                     curr_p = p
 
-            h_val = self.__heur_func(new_state, curr_p)
+            h_val = self.__h.value(new_state, curr_p)
             # improve trading abilities:
             if move.get_type() == Moves.MoveType.TRADE:
                 h_val += self.optimized_trading_choice(new_state, curr_p, deepcopy(move)) / 2
@@ -226,7 +228,7 @@ class OptimizedHeuristicAgent(Agent):
 
 
 class ExpectimaxProbAgent(Agent):
-    def __init__(self, heuristic: Callable, depth: int = 0, iters: int = 1):
+    def __init__(self, heuristic: Heuristics.Heuristic, depth: int = 0, iters: int = 1):
         super().__init__(AgentType.EXPROB)
         self.__depth = depth
         self.__iterations = iters
@@ -256,7 +258,7 @@ class ExpectimaxProbAgent(Agent):
                 for _d in range(self.__depth):
                     self.sim_me(move_state, player)
                     self.sim_opps(move_state, player)
-                value_reached = self.__h(move_state, player)
+                value_reached = self.__h.value(move_state, player)
                 all_move_values[move_idx].append(value_reached)
                 del move_state
             avg_move_val = sum(all_move_values[move_idx]) / self.__iterations
@@ -299,3 +301,10 @@ class DQNAgent(Agent):
         move_preds = get_move_predictions(DQNAgent.network, moves, state)
         chosen_move_index = move_preds[:, 0].argmax()
         return moves[chosen_move_index]
+
+
+def find_sim_player(session: GameSession, player: Player) -> Player:
+    # find the player's turn for the current session simulation
+    for sim_player in session.players():
+        if sim_player.get_id() == player.get_id():
+            return sim_player
