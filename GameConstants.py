@@ -10,8 +10,8 @@ class ResourceType(Enum):
     SHEEP = 4
     WHEAT = 5
     DESERT = 6
-    ANY = 7         # this is used by general harbors
-    UNKNOWN = 8     # used for mock playing moves with non-deterministic outcomes
+    ANY = 7  # this is used by general harbors
+    UNKNOWN = 8  # used for mock playing moves with non-deterministic outcomes
 
     def __str__(self):
         return self.name
@@ -141,6 +141,10 @@ class PurchasableType(Enum):
     def __str__(self):
         return self.name
 
+
+BUILDABLES = [PurchasableType.SETTLEMENT,
+              PurchasableType.CITY,
+              PurchasableType.ROAD]
 
 CardType = Union[DevType, ResourceType]
 

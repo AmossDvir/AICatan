@@ -1,29 +1,35 @@
 from __future__ import annotations
-from enum import IntEnum
-from typing import List, Union
-import Hand
-import Player
 import GameConstants as Consts
+from Player import Player
+from Hand import Hand
+from enum import Enum
+from typing import Union
 
 
-class MoveType(IntEnum):
+class MoveType(Enum):
+    """Enum representing different move types"""
     TRADE = 1
     BUY_DEV = 2
     USE_DEV = 3
     BUILD = 4
     THROW = 5
     PASS = 6
+    
+    def __str__(self):
+        return self.name
 
 
 class Move:
-    def __init__(self, player: Player.Player, mtype: MoveType):
+    """Class representing a possible action that a player can perform in Catan"""
+    def __init__(self, player: Player, mtype: MoveType):
         self.__player = player
         self.__type = mtype
 
-    def set_player(self, player: Player.Player) -> None:
+    def set_player(self, player: Player) -> None:
+        """sets the player making the move"""
         self.__player = player
 
-    def player(self) -> Player.Player:
+    def player(self) -> Player:
         """:returns the id of the player making the move"""
         return self.__player
     
@@ -32,6 +38,7 @@ class Move:
         return self.__type
 
     def info(self) -> str:
+        """:returns an informative string about this move"""
         return f'[MOVE] player = {self.player()}, type = {self.get_type().name}'
 
     def __str__(self) -> str:
@@ -39,34 +46,35 @@ class Move:
 
 
 class TradeMove(Move):
-    def __init__(self, player: Player.Player, cards_out: Hand.Hand, cards_in: Hand.Hand):
+    """A Move that trades cards with the main deck"""
+    def __init__(self, player: Player, cards_out: Hand, cards_in: Hand):
         super().__init__(player, MoveType.TRADE)
         self.__cards_out = cards_out
         self.__cards_in = cards_in
 
-    def gives(self) -> Hand.Hand:
-        """:returns cards to be given away by the player (as a Hand.Hand object)"""
+    def gives(self) -> Hand:
+        """:returns cards to be given away by the player (as a Hand object)"""
         return self.__cards_out
 
-    def gets(self) -> Hand.Hand:
-        """:returns cards to be obtained by the player (as a Hand.Hand object)"""
+    def gets(self) -> Hand:
+        """:returns cards to be obtained by the player (as a Hand object)"""
         return self.__cards_in
 
     def info(self) -> str:
+        """:returns an informative string about this trade move"""
         return f'[MOVE] player = {self.player()}, ' \
                f'type = {self.get_type().name}, gives = {self.gives()}, gets = {self.gets()}'
 
 
 class BuyDevMove(Move):
-    def __init__(self, player: Player.Player):
+    """A Move that buys a development card"""
+    def __init__(self, player: Player):
         super().__init__(player, MoveType.BUY_DEV)
-
-    def info(self) -> str:
-        return f'[MOVE] player = {self.player()}, type = {self.get_type().name}'
 
 
 class UseDevMove(Move):
-    def __init__(self, player: Player.Player, dtype: Consts.DevType):
+    """A Move that uses a development card"""
+    def __init__(self, player: Player, dtype: Consts.DevType):
         super().__init__(player, MoveType.USE_DEV)
         self.__dev_to_use = dtype
 
@@ -75,31 +83,30 @@ class UseDevMove(Move):
         return self.__dev_to_use
 
     def info(self) -> str:
+        """:returns an informative string about this Use Dev card move"""
         return f'[MOVE] player = {self.player()}, type = {self.get_type().name}, uses = {self.uses().name}'
 
 
 class UseRoadBuildingDevMove(UseDevMove):
-    def __init__(self, player: Player.Player, *locs: int):
+    """A Move that uses a Road Building Development Card"""
+    def __init__(self, player: Player):
         super().__init__(player, Consts.DevType.ROAD_BUILDING)
-        self.__locs = [loc for loc in locs]
-        # assert len(locs) == Consts.ROAD_BUILDING_NUM_ROADS
-
-    def edges(self) -> List[int]:
-        return self.__locs
 
 
 class UseYopDevMove(UseDevMove):
-    def __init__(self, player: Player.Player, *resources: Consts.ResourceType):
+    """A Move that uses a Year of Plenty Development Card"""
+    def __init__(self, player: Player, *resources: Consts.ResourceType):
         super().__init__(player, Consts.DevType.YEAR_OF_PLENTY)
-        self.__resources = Hand.Hand(*resources)
+        self.__resources = Hand(*resources)
         assert len(resources) == Consts.YOP_NUM_RESOURCES
 
-    def resources(self) -> Hand.Hand:
+    def resources(self) -> Hand:
         return self.__resources
 
 
 class UseMonopolyDevMove(UseDevMove):
-    def __init__(self, player: Player.Player, resource: Consts.ResourceType):
+    """A Move that uses a Monopoly Development Card"""
+    def __init__(self, player: Player, resource: Consts.ResourceType):
         super().__init__(player, Consts.DevType.MONOPOLY)
         self.__resource = resource
 
@@ -108,7 +115,8 @@ class UseMonopolyDevMove(UseDevMove):
 
 
 class UseKnightDevMove(UseDevMove):
-    def __init__(self, player: Player.Player, hex_id: int, opp: Union[Player.Player, None],
+    """A Move that uses a Knight Development Card / displaces the Robber when activated"""
+    def __init__(self, player: Player, hex_id: int, opp: Union[Player, None],
                  robber_activated: bool = False):
         super().__init__(player, Consts.DevType.KNIGHT)
         self.__hex_id = hex_id
@@ -116,40 +124,49 @@ class UseKnightDevMove(UseDevMove):
         self.__robber = robber_activated
 
     def robber_activated(self) -> bool:
+        """:returns True iff this move is actuated because of a Robber Activation (vs a Knight Dev)"""
         return self.__robber
 
     def hex_id(self) -> int:
+        """:returns the hex id to place robber"""
         return self.__hex_id
 
-    def take_from(self) -> Union[Player.Player, None]:
+    def take_from(self) -> Union[Player, None]:
+        """:returns the player from which to take a card (from the vicinity of the robber hex)"""
         return self.__opp
 
     def info(self) -> str:
+        """:returns an informative string about this move"""
         return f'[MOVE] player = {self.player()}, ' \
-               f'type = {self.get_type().name}, places robber at hex = {self.hex_id()}, takes card from = {self.take_from()}'
+               f'type = {self.get_type().name}, ' \
+               f'places robber at hex = {self.hex_id()}, takes card from = {self.take_from()}'
 
 
 class ThrowMove(Move):
-    def __init__(self, player: Player.Player, hand: Hand.Hand):
+    """A Move that throws a card from the player's hand"""
+    def __init__(self, player: Player, hand: Hand):
         super().__init__(player, MoveType.THROW)
         self.__hand = hand
 
-    def throws(self) -> Hand.Hand:
+    def throws(self) -> Hand:
+        """:returns card to throw as a Hand object"""
         return self.__hand
 
     def info(self) -> str:
+        """:returns an informative string about this throw move"""
         return f'[MOVE] player = {self.player()}, type = {self.get_type()}, throws = {self.throws()}'
 
 
 class BuildMove(Move):
-    def __init__(self, player: Player.Player, btype: Consts.PurchasableType, location: int,
-                 free: bool = False):
+    """A Move that builds a Buildable on the board"""
+    def __init__(self, player: Player, btype: Consts.PurchasableType, location: int, free: bool = False):
         super().__init__(player, MoveType.BUILD)
         self.__to_build = btype
         self.__loc = location
         self.__is_free = free
 
     def is_free(self) -> bool:
+        """:returns True iff buildable can be placed without cost for the player"""
         return self.__is_free
 
     def builds(self) -> Consts.PurchasableType:
@@ -161,5 +178,6 @@ class BuildMove(Move):
         return self.__loc
 
     def info(self) -> str:
+        """:returns an informative string about this build move"""
         return f'[MOVE] player = {self.player()}, ' \
                f'type = {self.get_type().name}, builds = {self.builds().name}, at = {hex(self.at())}'
