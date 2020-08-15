@@ -16,11 +16,6 @@ import GameLogger
 DEBUG = False
 
 
-def dprint(*args, **kwargs):
-    if DEBUG:
-        print(*args, **kwargs)
-
-
 class GamePhase(Enum):  # used for self reference when agent wants to continue simulation from point left off
     START = 0
     PRE_GAME_SETTLEMENT = 1
@@ -32,6 +27,7 @@ class GamePhase(Enum):  # used for self reference when agent wants to continue s
 
 
 class GameSession:
+    """Class representing a Catan game instance, handles game flow, rule adherence, and logic of the game."""
     def __init__(self, log: str = None, *players: Player.Player):
         assert Consts.MIN_PLAYERS <= len(players) <= Consts.MAX_PLAYERS
 
@@ -72,6 +68,7 @@ class GameSession:
         self.__logger = GameLogger.GameLogger(log) if log is not None else None
 
     def run_game(self) -> None:
+        """Initiates the main game loop, returns when game ends."""
         self.__run_pre_game()
 
         for curr_player in self.__turn_generator(self.__num_players):
@@ -173,47 +170,60 @@ class GameSession:
                 break
 
     def largest_army_player(self) -> Union[Player.Player, None]:
+        """:returns player holding the largest army, None if no player currently holds it"""
         player = max(self.players(), key=lambda x: x.army_size())
         if self.largest_army_size() >= Consts.MIN_LARGEST_ARMY_SIZE:
             return player
 
     def largest_army_size(self) -> int:
+        """:returns the size of the currently largest army in the game"""
         return max(p.army_size() for p in self.players())
 
     def longest_road_player(self) -> Union[Player.Player, None]:
+        """:returns player holding the Longest Road, None if no player currently holds it"""
         player = max(self.players(), key=lambda x: self.board().road_len(x))
         if self.longest_road_length() >= Consts.MIN_LONGEST_ROAD_SIZE:
             return player
 
     def longest_road_length(self) -> int:
+        """:returns the length of the currently longest road in the game"""
         return max(self.board().road_len(p) for p in self.players())
 
     def board(self) -> Board.Board:
+        """:returns the game's board instance"""
         return self.__board
 
     def players(self) -> List[Player]:
+        """:returns a list of the player instances in the game, in turn order"""
         return self.__turn_order
 
     def winner(self) -> Union[Player, None]:
+        """if the game ended, :returns the player that won the game, None otherwise"""
         if self.is_game_over():
             return max([p for p in self.players()], key=lambda p: p.vp())
 
     def is_game_over(self) -> bool:
+        """:returns True iff a player has reached the winning VP amount"""
         return any(player.vp() >= Consts.WINNING_VP for player in self.players())
 
     def num_turns_played(self) -> int:
+        """:returns the number of turns played so far"""
         return self.__num_turns_played
 
     def vp_history(self):
+        """:returns a {player: history} dictionary that maps players to lists of their VP per turn"""
         return self.__player_vp_histories
 
     def current_player(self) -> Player.Player:
+        """:returns the player whose turn it is"""
         return self.__curr_player_sim
 
     def vp_earned_this_phase(self) -> int:
+        """:returns the number of VP earned in the current game phase (choice making phase)"""
         return self.__vp_earned_this_phase
 
     def simulate_game(self, move_to_play: Moves.Move = None) -> List[Moves.Move]:
+        """simulates a move to play, returns list of valid moves to play next"""
         if self.__phase == GamePhase.START:
             return self.__start_sim()
 
@@ -241,6 +251,7 @@ class GameSession:
             return self.__possible_moves_this_phase
 
     def simulate_move(self, move: Moves.Move) -> GameSession:
+        """legacy version of simulate_game that simulates without resuming the game flow"""
         state = deepcopy(self)
         for p in state.players():
             if p.get_id() == move.player().get_id():
@@ -254,9 +265,11 @@ class GameSession:
             print('ERROR didnt find new player obj in deepcopy')
 
     def possible_moves(self) -> List[Moves.Move]:
+        """:returns list of possible moves to currently play"""
         return self.__possible_moves_this_phase
 
     def potential_probability_score(self, player: Player) -> float:
+        """a scoring function that evaluates the potential probability value of a player's locality on the board"""
         def get_player_nodes(p):
             all_nodes = []
             for edge in p.road_edges():
@@ -295,6 +308,7 @@ class GameSession:
         return prob_score
 
     def status_table(self) -> str:
+        """:returns an informative string in tabular form of the current state of the game"""
         table = [['Player'] + [player for player in self.players()],
                  ['VP'] + [player.vp() for player in self.players()],
                  ['Agent'] + [str(player.agent()) for player in self.players()],
@@ -1012,3 +1026,9 @@ class GameSession:
             next_player_idx = (self.players().index(curr_player) + 1) % len(self.players())
             self.__curr_player_sim = self.players()[next_player_idx]
             return self.__main_game_sim()
+
+
+def dprint(*args, **kwargs):
+    """a debug printer"""
+    if DEBUG:
+        print(*args, **kwargs)

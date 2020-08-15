@@ -18,6 +18,7 @@ PROBABILITIES = {
 
 
 class Dice:
+    """Class representing a fair pair of dice"""
     def __init__(self):
         self.__last_roll = self.roll()
         self.__sum = sum(self.__last_roll)
@@ -37,5 +38,5 @@ class Dice:
         return self.__sum
 
     def info(self) -> str:
+        """:returns an informative string about these dice"""
         return f'[DICE] current roll = {self.get_last_roll()}, sum = {self.sum()}'
-

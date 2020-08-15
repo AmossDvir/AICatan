@@ -20,7 +20,7 @@ class AgentType(Enum):
     HUMAN = 1
     ONE_MOVE = 2
     PROBABILITY = 3
-    EXPROB = 4
+    MONTECARLO = 4
     DQN = 5
     OPTIMIZED = 6
 
@@ -64,8 +64,7 @@ class RandomAgent(Agent):
         move_type = choice(available_move_types)
         filtered_moves = [m for m in moves if m.get_type() == move_type]
 
-        # from build moves choose uniformly from buildables
-        if move_type == Moves.MoveType.BUILD:
+        if move_type == Moves.MoveType.BUILD:  # from build moves choose uniformly from buildables
             available_build_types = list(set([m.builds() for m in filtered_moves]))
             build_type = choice(available_build_types)
             filtered_moves = [m for m in filtered_moves if m.builds() == build_type]

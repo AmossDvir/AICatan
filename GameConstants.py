@@ -2,6 +2,8 @@ from enum import Enum
 from Hand import Hand
 from typing import Union
 
+"""A Module containing all constants in the Settlers of Catan game"""
+
 
 class ResourceType(Enum):
     FOREST = 1
