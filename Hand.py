@@ -6,7 +6,10 @@ from random import choice
 
 
 class Hand:
-
+    """
+    represents a bundle of resources (or one), and number of operations that
+    can be made (adding cards, removing cards, etc.)
+    """
     def __init__(self, *cards: Consts.CardType):
         self.__cards = defaultdict(int)
         for card in cards:
@@ -26,6 +29,11 @@ class Hand:
             self.__cards[card] -= amount
 
     def remove_as_much(self, cards: Hand) -> Hand:
+        """
+
+        :param cards:
+        :return:
+        """
         removed = Hand()
         for card in cards:
             single_hand = Hand(card)
@@ -35,26 +43,42 @@ class Hand:
         return removed
 
     def remove_by_type(self, card_type: Consts.CardType) -> Hand:
+        """
+
+        :param card_type:
+        :return:
+        """
         num_type = self.__cards[card_type]
         hand_to_remove = Hand(*[card_type] * num_type)
         self.remove(hand_to_remove)
         return hand_to_remove
 
     def contains(self, hand: Hand) -> bool:
+        """
+        :return: True if the current cards bundle contains
+        the given "Hand" object, else: False
+        """
         for card, amount in hand.__cards.items():
             if self.__cards[card] < amount:
                 return False
         return True
 
     def devs(self) -> Hand:
-        """return development cards in hand"""
+        """
+        :return: development cards in hand
+        """
         return self.cards_of_class(Consts.DevType)
 
     def resources(self) -> Hand:
-        """return resource cards in hand"""
+        """
+        :return: resource cards in hand
+        """
         return self.cards_of_class(Consts.ResourceType)
 
     def size(self) -> int:
+        """
+        :return: the number of cards the "Hand" object holds
+        """
         return sum(self.__cards.values())
 
     def cards_of_type(self, card: Consts.CardType) -> Hand:
@@ -65,6 +89,10 @@ class Hand:
         return Hand(*(card for card in self if isinstance(card, ctype)))
 
     def remove_random_card(self) -> Hand:
+        """
+        removes a random card from the hand
+        :return: the removed card
+        """
         deck = [card for card in self]
         if not deck:
             raise ValueError('cannot remove card, no cards left')
@@ -104,7 +132,7 @@ class Hand:
     def map_resources_by_quantity(self) -> dict:
         """
         maps the hand of the player to a dictionary:
-        keys: resources, values: occurences
+        keys: resources, values: occurrences
         :return:
         """
         res_values = {}

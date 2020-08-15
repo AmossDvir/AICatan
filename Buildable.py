@@ -4,6 +4,9 @@ import Player
 
 
 class Buildable:
+    """
+    represents objects that can be built on board during a game
+    """
     def __init__(self, player: Player, coord: int, btype: Consts.PurchasableType):
         self.__player = player
         self.__coord = coord
