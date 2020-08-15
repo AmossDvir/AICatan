@@ -82,9 +82,9 @@ my_one_move = open("one_move.txt", "w")
 
 my_one_move.write("exptimaxprob\n")
 for i in range(20):
-    E = Player.Player(Agent.ExpectimaxProbAgent(Heuristics.everything_heuristic), "E")
-    RE = Player.Player(Agent.ExpectimaxProbAgent(Heuristics.relative_everything_heuristic), "RE")
-    P = Player.Player(Agent.ExpectimaxProbAgent(Heuristics.probability_score_heuristic), "P")
+    E = Player.Player(Agent.MonteCarloAgent(Heuristics.everything_heuristic), "E")
+    RE = Player.Player(Agent.MonteCarloAgent(Heuristics.relative_everything_heuristic), "RE")
+    P = Player.Player(Agent.MonteCarloAgent(Heuristics.probability_score_heuristic), "P")
     R4 = Player.Player(Agent.RandomAgent(), "R4")
     game = GameSession.GameSession(None, E, RE, P, R4)
     game.run_game()

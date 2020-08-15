@@ -15,6 +15,7 @@ from DQN import get_move_predictions
 
 
 class AgentType(Enum):
+    """Enum representing Agent types"""
     RANDOM = 0
     HUMAN = 1
     ONE_MOVE = 2
@@ -28,6 +29,7 @@ class AgentType(Enum):
 
 
 class Agent:
+    """Class representing an AI agent that can choose a move based on a strategy / AI paradigm"""
     ID_GEN = 0
 
     def __init__(self, agent_type: AgentType):
@@ -36,12 +38,15 @@ class Agent:
         self.__type = agent_type
 
     def type(self) -> AgentType:
+        """:returns the Enum type of this agent"""
         return self.__type
 
     def id(self) -> int:
+        """:returns the unique id of this agent instance"""
         return self.__id
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+        """:returns a chosen move from moves"""
         raise NotImplemented
 
     def __str__(self):
@@ -49,6 +54,7 @@ class Agent:
 
 
 class RandomAgent(Agent):
+    """An agent that makes (uniform) random move choices"""
     def __init__(self):
         super().__init__(AgentType.RANDOM)
 
@@ -73,6 +79,7 @@ class RandomAgent(Agent):
 
 
 class HumanAgent(Agent):
+    """An agent that chooses via human input (stdin)"""
     def __init__(self, name='human'):
         super().__init__(AgentType.HUMAN)
         self.__name = name
@@ -104,6 +111,7 @@ class HumanAgent(Agent):
 
 
 class OneMoveHeuristicAgent(Agent):
+    """An agent that gets a heuristic, chooses a move that maximizes that heuristic value"""
     # Open the tree only one move forward and apply the given heuristic on it
     def __init__(self, heuristic: Heuristics.Heuristic = Heuristics.Main()):
         super().__init__(AgentType.ONE_MOVE)
@@ -131,6 +139,7 @@ class OneMoveHeuristicAgent(Agent):
 
 
 class ProbabilityAgent(Agent):
+    """An agent that chooses a move that maximizes the probability heuristic"""
     def __init__(self):
         super().__init__(AgentType.PROBABILITY)
         self.__harry = OneMoveHeuristicAgent(Heuristics.Probability())
@@ -140,6 +149,7 @@ class ProbabilityAgent(Agent):
 
 
 class OptimizedHeuristicAgent(Agent):
+    """A heuristic agent that implements helper functions that score move types as well as states"""
     # using the one move heuristic method
     def __init__(self, heuristic=Heuristics.AmossComb1()):
         super().__init__(AgentType.OPTIMIZED)
@@ -204,12 +214,8 @@ class OptimizedHeuristicAgent(Agent):
         return score
 
     @staticmethod
-    def optimized_trading_choice(session: GameSession, player: Player,
-                                 move: Moves):
-        """
-        prefer trading resources for resources you can't get from dice
-        :return:
-        """
+    def optimized_trading_choice(session: GameSession, player: Player, move: Moves):
+        """prefer trading resources for resources you can't get from dice"""
         p = find_sim_player(session, player)
         res_hand = p.resource_hand()
         score = 0
@@ -227,7 +233,9 @@ class OptimizedHeuristicAgent(Agent):
         return score
 
 
-class ExpectimaxProbAgent(Agent):
+class MonteCarloAgent(Agent):
+    """An agent that uses a limited depth variant of Monte Carlo (game) tree search with heavy playouts
+    (heuristic based). Tree traversal ends with current player's End-of-Turn."""
     def __init__(self, heuristic: Heuristics.Heuristic, depth: int = 0, iters: int = 1):
         super().__init__(AgentType.EXPROB)
         self.__depth = depth
@@ -292,6 +300,7 @@ class ExpectimaxProbAgent(Agent):
 
 
 class DQNAgent(Agent):
+    """An agent trained with a Deep-Q Learning Neural Network"""
     network = tf.keras.models.load_model("current_model")
 
     def __init__(self):

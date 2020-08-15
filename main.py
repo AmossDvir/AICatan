@@ -19,7 +19,7 @@ AGENTS = {
     ONE_MOVE_AGENT: Agent.OneMoveHeuristicAgent(),
     HUMAN_AGENT: Agent.HumanAgent(),
     PROBABILITY_AGENT: Agent.ProbabilityAgent(),
-    EXPROB_AGENT: Agent.ExpectimaxProbAgent(Heuristics.everything_heuristic)
+    EXPROB_AGENT: Agent.MonteCarloAgent(Heuristics.everything_heuristic)
 }
 DEFAULT_AGENTS = [RANDOM_AGENT]
 PLAYER_NAMES = ['Roy', 'Boaz', 'Oriane', 'Amoss']
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     # batch 2:
     a = Agent.OneMoveHeuristicAgent()
     a2 = Agent.OptimizedHeuristicAgent()
-    a3 = Agent.ExpectimaxProbAgent(Heuristics.everything_heuristic)
+    a3 = Agent.MonteCarloAgent(Heuristics.everything_heuristic)
     a4 = Agent.ProbabilityAgent()
     batch_size = 30
     batch_results = []
