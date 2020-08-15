@@ -6,6 +6,7 @@ import Player
 import Agent
 import Heuristics
 import argparse
+import json
 
 DEFAULT_NUM_PLAYERS = 4
 RANDOM_AGENT = 'random'
@@ -68,13 +69,80 @@ def main(log: str = None, num_players: int = DEFAULT_NUM_PLAYERS, agents: List[s
 
 
 if __name__ == '__main__':
-    args = get_args()
-    main(**vars(args))
-    # a = Agent.RandomAgent()
-    # a2 = Agent.ProbabilityAgent()
-    # p1 = Player.Player(a, 'Oriane')
-    # p2 = Player.Player(a, 'Amoss')
-    # p3 = Player.Player(a, 'Boaz')
-    # p4 = Player.Player(a2, 'Roy')
-    # session = GameSession.GameSession(None, p1, p2, p3, p4)
-    # session.run_game()
+    # args = get_args()
+    # main(**vars(args))
+    # a = Agent.ExpectimaxProbAgent(Heuristics.heuristic_comb1)
+    # a2 = Agent.ExpectimaxProbAgent(Heuristics.everything_heuristic)
+
+
+    # batch 1:
+    a = Agent.OptimizedHeuristicAgent()
+    a2 = Agent.OneMoveHeuristicAgent()
+    batch_size = 50
+    batch_results = []
+    batch_vp_histories = []
+    batch_vp_file_name = 'optiComb1_optiComb1_omhComb1_omhComb1_vp'
+    batch_res_file_name = 'optiComb1_optiComb1_omhComb1_omhComb1_res'
+    for run in range(batch_size):
+        try:
+            p1 = Player.Player(a, 'Amoss')
+            p2 = Player.Player(a, 'Boaz')
+            p3 = Player.Player(a2, 'Oriane')
+            p4 = Player.Player(a2, 'Roy')
+            session = GameSession.GameSession(None, p1, p2, p3, p4)
+            session.run_game()
+            vp_hist = session.vp_history()    # {p1: [2,2,2,2,2,22,2,3,3,3,3,3,3,4,,6,4,]}
+            results = dict(Oriane=0, Amoss=0, Boaz=0, Roy=0, turns=0) # {'p1': 0, }
+            results['Amoss'] = p1.vp()
+            results['Boaz'] = p2.vp()
+            results['Oriane'] = p3.vp()
+            results['Roy'] = p4.vp()
+            results['turns'] = session.num_turns_played()
+            batch_vp_histories.append(vp_hist)
+            batch_results.append(results)
+        except Exception as e:
+            print(e)
+
+    with open(batch_res_file_name, 'w') as f:
+        f.write(json.dumps(batch_results))
+
+    with open(batch_vp_file_name, 'w') as f:
+        f.write(json.dumps(batch_vp_histories))
+
+
+    # batch 2:
+    a = Agent.OneMoveHeuristicAgent()
+    a2 = Agent.OptimizedHeuristicAgent()
+    a3 = Agent.ExpectimaxProbAgent(Heuristics.everything_heuristic)
+    a4 = Agent.ProbabilityAgent()
+    batch_size = 30
+    batch_results = []
+    batch_vp_histories = []
+    batch_vp_file_name = 'omhComb1_optiComb1_exProbEveHeu_prob_vp'
+    batch_res_file_name = 'omhComb1_optiComb1_exProbEveHeu_prob_res'
+    for run in range(batch_size):
+        try:
+            p1 = Player.Player(a, 'Amoss')
+            p2 = Player.Player(a2, 'Boaz')
+            p3 = Player.Player(a3, 'Oriane')
+            p4 = Player.Player(a4, 'Roy')
+            session = GameSession.GameSession(None, p1, p2, p3, p4)
+            session.run_game()
+            vp_hist = session.vp_history()  # {p1: [2,2,2,2,2,22,2,3,3,3,3,3,3,4,,6,4,]}
+            results = dict(Oriane=0, Amoss=0, Boaz=0, Roy=0,turns=0)  # {'p1': 0, }
+            results['Amoss'] = p1.vp()
+            results['Boaz'] = p2.vp()
+            results['Oriane'] = p3.vp()
+            results['Roy'] = p4.vp()
+            results['turns'] = session.num_turns_played()
+            batch_vp_histories.append(vp_hist)
+            batch_results.append(results)
+        except Exception as e:
+            print(e)
+
+    with open(batch_res_file_name, 'w') as f:
+        f.write(json.dumps(batch_results))
+
+    with open(batch_vp_file_name, 'w') as f:
+        f.write(json.dumps(batch_vp_histories))
+
