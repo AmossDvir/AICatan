@@ -44,7 +44,7 @@ class GameSession:
         self.__turn_order = self.__init_turn_order(*players)
         self.__num_players = len(self.__turn_order)
         self.__player_colors = ()
-        self.__player_vp_histories = {p: [] for p in self.players()}
+        self.__player_vp_histories = {str(p): [] for p in self.players()}
 
         # resources deck #
         self.__res_deck = Hand.Hand(*Consts.RES_DECK)
@@ -195,7 +195,7 @@ class GameSession:
 
     def __update_vp_histories(self) -> None:
         for p in self.players():
-            self.__player_vp_histories[p].append(p.vp())
+            self.__player_vp_histories[str(p)].append(p.vp())
 
     def vp_history(self):
         return self.__player_vp_histories

@@ -20,6 +20,7 @@ class AgentType(Enum):
     PROBABILITY = 3
     EXPROB = 4
     DQN = 5
+    OPTIMIZED = 6
 
     def __str__(self):
         return self.name
@@ -119,8 +120,6 @@ class OneMoveHeuristicAgent(Agent):
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         hval = 0
         move_values = []
-        # print('&&&&&&&&')
-        # print(*(m.info() for m in moves), sep='\n')
         for move in moves:
             # print(move.info())
             # new_state = state.simulate_move(move)
@@ -152,7 +151,7 @@ class ProbabilityAgent(Agent):
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         move_vals = []
         for move in moves:
-            from copy import deepcopy
+
             new_state = deepcopy(state)
             new_state = new_state.simulate_move(move)
             # get heuristic value on new_state
@@ -166,6 +165,96 @@ class ProbabilityAgent(Agent):
         move = RandomAgent().choose(moves, player, state)
 
         return move
+
+class OptimizedHeuristicAgent(Agent):
+    # using the one move heuristic method
+    def __init__(self, heuristic=heuristic_comb1):
+        super().__init__(AgentType.OPTIMIZED)
+        self.__heur_func = heuristic
+        self.__randy = RandomAgent()
+
+    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+        h_val = 0
+        move_values = []
+        for move in moves:
+            # improve choice of monopoly dev card before simulating new state:
+            if move.get_type() == Moves.MoveType.USE_DEV:
+                if move.uses() == Consts.DevType.MONOPOLY:
+                    h_val += self.optimize_monopoly_choice(state, player, deepcopy(move))
+                    print(h_val)
+            # print(move.info())
+            new_state = deepcopy(state)
+            new_state.simulate_game(move)
+            curr_p = move.player()
+            for p in new_state.players():
+                if p == move.player():
+                    curr_p = p
+
+            h_val = self.__heur_func(new_state, curr_p)
+            # improve trading abilities:
+            if move.get_type() == Moves.MoveType.TRADE:
+                h_val += self.optimized_trading_choice(new_state, curr_p, deepcopy(move))/2
+
+            move_values.append(h_val)
+            del new_state
+
+        max_val = max(move_values)
+        argmax_vals_indices = [i for i, val in enumerate(move_values) if val == max_val]
+        moves = [moves[i] for i in argmax_vals_indices]
+        move = self.__randy.choose(moves, player, state)
+        return move
+
+    def optimize_monopoly_choice(self,session: GameSession, player: Player, move: Moves):
+        """
+        finds the most common resource among all other players and calculates
+        if it is the best choice for the player, considering the player's hand
+
+        :return:
+        """
+        p = find_sim_player(session, player)
+        score = 0
+        all_res_from_players = Hand.Hand()
+        # all resources from all players:
+        [all_res_from_players.insert(other_player.resource_hand()) for other_player in session.players() if other_player != p]
+        res_values_all_players = \
+            all_res_from_players.map_resources_by_quantity()
+        res_values_curr_player = p.resource_hand().map_resources_by_quantity()
+
+        for res_type in res_values_all_players:
+            res_values_all_players[res_type] -= res_values_curr_player[
+                                                    res_type] / 2
+        # for res_type in res_values_all_players:
+        #     if p.resource_hand()
+        most_common_res = max(res_values_all_players,
+                              key=res_values_all_players.get)
+        # print("move res: ",move.resource(),"most common: ",most_common_res,
+        # "all: ",res_values_all_players)
+        if move.resource() == most_common_res:
+            score += 0.5
+        return score
+
+    def optimized_trading_choice(self,session: GameSession, player: Player,
+                              move: Moves):
+        """
+        prefer trading resources for resources you can't get from dice
+        :return:
+        """
+        p = find_sim_player(session, player)
+        res_hand = p.resource_hand()
+        score = 0
+        if move.get_type() == Moves.MoveType.TRADE:
+            __board = session.board()
+            res_types_from_dice = __board.resources_player_can_get(player)
+            gets_type = move.gets().get_cards_types().pop()
+            num_instances_gets_type = res_hand.get_num_instances_of_type(
+                gets_type)
+
+            # if what you get from trading you can't achieve from dice:
+            if gets_type not in res_types_from_dice:
+                # raise score:
+                score += 1 / (2 * num_instances_gets_type)
+        return score
+
 
 
 class ExpectimaxProbAgent(Agent):

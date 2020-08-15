@@ -47,53 +47,8 @@ def harbors_heuristic(session: GameSession, player: Player):
     """
     return len(player.harbors())/9
 
-def smart_trade_heuristic(session: GameSession, player: Player,move:Moves):
-    """
-    prefer trading resources for resources you can't get from dice
-    :return:
-    """
-    p = find_sim_player(session,player)
-    res_hand = p.resource_hand()
-    score = 0
-    if move.get_type() == Moves.MoveType.TRADE:
-        __board = session.board()
-        res_types_from_dice = __board.resources_player_can_get(player)
-        gets_type = move.gets().get_cards_types().pop()
-        num_instances_gets_type = res_hand.get_num_instances_of_type(gets_type)
-
-        # if what you get from trading you can't achieve from dice:
-        if gets_type not in res_types_from_dice:
-            # raise score:
-            score +=  1/(2*num_instances_gets_type)
-
-    return score
-
-def monopoly_heuristic(session: GameSession, player: Player, move: Moves):
-    """
-    finds the most common resource among all other players and calculates
-    if it is the best choice for the player, considering the player's hand
-
-    :return:
-    """
-    p = find_sim_player(session, player)
-    score = 0
-    all_res_from_players = Hand.Hand()
-    # all resources from all players:
-    [all_res_from_players.insert(other_player.resource_hand()) for other_player in session.players() if other_player != p]
-    res_values_all_players = all_res_from_players.map_resources_by_quantity()
-    res_values_curr_player = p.resource_hand().map_resources_by_quantity()
-
-    for res_type in res_values_all_players:
-        res_values_all_players[res_type] -= res_values_curr_player[res_type]/2
-    # for res_type in res_values_all_players:
-    #     if p.resource_hand()
-    most_common_res = max(res_values_all_players, key=res_values_all_players.get)
-    # print("move res: ",move.resource(),"most common: ",most_common_res,"all: ",res_values_all_players)
-    if move.resource() == most_common_res:
-        score += 0.5
 
 
-    return score
 
 def game_won_heuristic(session: GameSession, player: Player):
     """
@@ -394,7 +349,7 @@ def main_heuristic(session:GameSession,player:Player):
     __sim_player = find_sim_player(session,player)
     __vp = vp_heuristic(session,__sim_player) * VP_WEIGHT
     __harbours = harbors_heuristic(session,__sim_player) * HARBOURS_WEIGHT
-    __prefer = prefer_resources_in_each_part(session,__sim_player) * PREFER_RESOURCES_WEIGHT # todo: not good at all
+    __prefer = prefer_resources_in_each_part(session,__sim_player) * PREFER_RESOURCES_WEIGHT
     __roads = roads_heuristic(session,__sim_player)*ROADS_WEIGHT
     __settles = settles_heuristic(session,__sim_player) * SETTLES_WEIGHT
     __cities = cities_heuristic(session,__sim_player) * CITIES_WEIGHT
@@ -404,17 +359,6 @@ def main_heuristic(session:GameSession,player:Player):
     __won_game = game_won_heuristic(session,__sim_player)
     __enough_res_to_buy = enough_res_to_buy(session,__sim_player)*ENOUGH_RES_TO_BUY
 
-    #     print("////////////////////")
-    #     print(session.board())
-    #     print("Heuristics' Scores: ")
-    #     print("prefer: ",__prefer)
-    #     print(str.title(f"victory point: {__vp}\nharbours: \
-    # {__harbours}\nroads: {__roads}\nsettlements: {__settles}\ndev cards: \
-    # {__dev}\ncities: {__cities}\nbuild in good places: {__build}\ndiversity: \
-    # {__diversity}\nenough res to buy: {__enough_res_to_buy}"))
-    #     print("sum score: ",__sum_score)
-    #     print("////////////////////")
-
     # todo: altogether, needs tuning...
     __sum_score = __vp + __harbours + \
            __roads + \
@@ -422,9 +366,7 @@ def main_heuristic(session:GameSession,player:Player):
                   __won_game + __diversity + __enough_res_to_buy + __prefer
 
     __builder_characteristic = __vp + __build + __roads+ __cities + __won_game # todo: pretty good combination
-
     return __builder_characteristic
-    # return __diversity + __build + __won_game + __dev
 
 
 def linear_heuristic(session:GameSession,player:Player, vector=[1]*11):
