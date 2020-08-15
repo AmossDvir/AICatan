@@ -12,7 +12,7 @@ class TrainingData:
         for i, session in tqdm(enumerate(sessions)):
             self.x[i,:] = session_to_input(session)
             # new_sessions, move_dict = open_prediction_tree(session.get_possible_moves(session.current_player()), session)
-            new_sessions, move_dict = open_prediction_tree(session.possible_moves_this_phase(), session)
+            new_sessions, move_dict = open_prediction_tree(session.possible_moves(), session)
             offset = len(expanded_sessions)
             expanded_sessions += new_sessions
             self.child_list.append([[(offset+sess_i, move_dict[m][sess_i]) for sess_i in move_dict[m]] for m in move_dict])

@@ -15,9 +15,11 @@ import GameLogger
 
 DEBUG = False
 
+
 def dprint(*args, **kwargs):
     if DEBUG:
         print(*args, **kwargs)
+
 
 class GamePhase(Enum):  # used for self reference when agent wants to continue simulation from point left off
     START = 0
@@ -60,17 +62,14 @@ class GameSession:
         self.__curr_player_sim = self.__turn_order[0]
         self.__pre_game_round = 1
         self.__pre_game_settlement_node = None
-        self.__num_to_throw_sim = None
-        self.__curr_throw_sim = None
+        self.__throw_player = None
+        self.__throw_player_hand_size = None
         self.__vp_earned_this_phase = 0
         self.__possible_moves_this_phase = []
         self.__illegal_move = False
 
         # Saving a log of game sessions:
         self.__logger = GameLogger.GameLogger(log) if log is not None else None
-
-    def num_turns_played(self) -> int:
-        return self.__num_turns_played
 
     def run_game(self) -> None:
         self.__run_pre_game()
@@ -81,16 +80,12 @@ class GameSession:
             self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
             if self.__num_turns_played % 10 == 0:
                 print(self.__num_turns_played, self.__curr_player_sim, 'playing...')
-            # print(*('{} = {}  '.format(p, p.vp()) for p in self.players()))
-
-            # print(self.status_table())
-            # TODO add option to use dev card before roll?
+            print(*('{} = {}  '.format(p, p.vp()) for p in self.players()))
 
             self.__dice.roll()
-            dprint('\n\n' + '*'*100)
+            dprint('\n\n' + '*' * 100)
             dprint('*' * 45, 'NEXT TURN', '*' * 44)
-            dprint('*'*100 + '\n')
-            # print(self.info(), '\n')
+            dprint('*' * 100 + '\n')
             dprint(f'[RUN GAME] Rolling dice... {self.__dice.sum()} rolled')
             if self.__dice.sum() == Consts.ROBBER_DICE_VALUE:  # robber activated
                 dprint('[RUN GAME] Robber Activated! Checking for oversized hands...')
@@ -105,10 +100,6 @@ class GameSession:
                         for _ in range(player_hand_size // 2):
                             self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
                             throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                            # while throw_move not in self.__possible_moves_this_phase:
-                            #     self.__illegal_move = True
-                            #     throw_move = player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                            # self.__illegal_move = False
                             cards_thrown = throw_move.throws()
                             dprint(f'[RUN GAME] player {player} had too many cards ({player_hand_size}), '
                                    f'he threw {cards_thrown}')
@@ -119,11 +110,8 @@ class GameSession:
                 self.__phase = GamePhase.ROBBER_PLACE
                 self.__possible_moves_this_phase = self.__get_possible_knight_moves(curr_player, robber=True)
                 knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                # while knight_move not in self.__possible_moves_this_phase:
-                #     self.__illegal_move = True
-                #     knight_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                # self.__illegal_move = False
 
+                assert isinstance(knight_move, Moves.UseKnightDevMove)
                 robber_hex = knight_move.hex_id()
                 opp = knight_move.take_from()
                 self.__robber_protocol(curr_player, robber_hex, opp)
@@ -140,15 +128,11 @@ class GameSession:
 
             # query player for move #
             self.__phase = GamePhase.MAKE_MOVE
-            self.__possible_moves_this_phase = self.get_possible_moves(curr_player)
+            self.__possible_moves_this_phase = self.__get_possible_moves(curr_player)
             moves_available = self.__possible_moves_this_phase
             dprint(f'[RUN GAME] player {curr_player} can play:\n')
             dprint('\n'.join(m.info() for m in moves_available) + '\n')
             move_to_play = curr_player.choose(moves_available, deepcopy(self))
-            # while move_to_play not in moves_available:
-            #     self.__illegal_move = True
-            #     move_to_play = curr_player.choose(moves_available, deepcopy(self))
-            # self.__illegal_move = False
 
             dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
 
@@ -161,15 +145,11 @@ class GameSession:
                 self.__logger.write_session(deepcopy(self))
 
             while move_to_play.get_type() != Moves.MoveType.PASS:
-                self.__possible_moves_this_phase = self.get_possible_moves(curr_player)
+                self.__possible_moves_this_phase = self.__get_possible_moves(curr_player)
                 moves_available = self.__possible_moves_this_phase
                 dprint(f'[RUN GAME] player {curr_player} can play:\n')
                 dprint('\n'.join(m.info() for m in moves_available) + '\n')
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
-                # while move_to_play not in moves_available:
-                #     self.__illegal_move = True
-                #     move_to_play = curr_player.choose(moves_available, deepcopy(self))
-                # self.__illegal_move = False
                 dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
 
                 vp_before = curr_player.vp()
@@ -182,7 +162,6 @@ class GameSession:
 
             dprint(self.board())
             dprint(self.status_table())
-            # print(self.status_table())
             self.__update_vp_histories()
             if self.is_game_over():
                 self.__phase = GamePhase.GAME_OVER
@@ -192,29 +171,6 @@ class GameSession:
                 print(f'\n\n\nGAME OVER - player {curr_player} won!!!')
                 print("Game Ended After", self.__num_turns_played, "Turns")
                 break
-
-    def __update_vp_histories(self) -> None:
-        for p in self.players():
-            self.__player_vp_histories[str(p)].append(p.vp())
-
-    def vp_history(self):
-        return self.__player_vp_histories
-
-    def winner(self) -> Union[Player, None]:
-        if self.is_game_over():
-            return max([p for p in self.players()], key=lambda p: p.vp())
-
-    def current_player(self) -> Player.Player:
-        return self.__curr_player_sim
-
-    def curr_turn(self) -> int:
-        return self.__curr_turn_idx
-
-    def players(self) -> List[Player]:
-        return self.__turn_order
-
-    def board(self) -> Board.Board:
-        return self.__board
 
     def largest_army_player(self) -> Union[Player.Player, None]:
         player = max(self.players(), key=lambda x: x.army_size())
@@ -232,288 +188,30 @@ class GameSession:
     def longest_road_length(self) -> int:
         return max(self.board().road_len(p) for p in self.players())
 
+    def board(self) -> Board.Board:
+        return self.__board
+
+    def players(self) -> List[Player]:
+        return self.__turn_order
+
+    def winner(self) -> Union[Player, None]:
+        if self.is_game_over():
+            return max([p for p in self.players()], key=lambda p: p.vp())
+
+    def is_game_over(self) -> bool:
+        return any(player.vp() >= Consts.WINNING_VP for player in self.players())
+
+    def num_turns_played(self) -> int:
+        return self.__num_turns_played
+
+    def vp_history(self):
+        return self.__player_vp_histories
+
+    def current_player(self) -> Player.Player:
+        return self.__curr_player_sim
+
     def vp_earned_this_phase(self) -> int:
         return self.__vp_earned_this_phase
-
-    def get_possible_moves(self, player: Player.Player) -> List[Moves.Move]:
-        moves = []
-
-        ### PASS TURN ###
-        moves.append(Moves.Move(player, Moves.MoveType.PASS))
-
-        ### BUY ###
-        # Buy Dev Move Legality
-        if (self.__can_purchase(player, Consts.PurchasableType.DEV_CARD) and
-                self.__dev_deck.size() > 0):
-            moves.append(Moves.BuyDevMove(player))
-
-        ### USE ###
-        # Use Dev Card Legality
-        for dev_type in Consts.DevType:     # get dev card type
-            if player.dev_hand().contains(Hand.Hand(dev_type)):   # if has it
-                # if wasnt bought this turn or had at least 1 more from before this turn
-                if (dev_type not in self.__dev_cards_bought_this_turn or
-                        player.dev_hand().cards_of_type(dev_type).size() >
-                        self.__dev_cards_bought_this_turn.cards_of_type(dev_type).size()):
-                    if dev_type == Consts.DevType.MONOPOLY:
-                        for resource in Consts.YIELDING_RESOURCES:
-                            moves.append(Moves.UseMonopolyDevMove(player, resource))
-                    elif dev_type == Consts.DevType.YEAR_OF_PLENTY:
-                        for resource_comb in combinations(Consts.YIELDING_RESOURCES, Consts.YOP_NUM_RESOURCES):
-                            moves.append(Moves.UseYopDevMove(player, *resource_comb))
-                    elif dev_type == Consts.DevType.ROAD_BUILDING:
-                        moves.append(Moves.UseRoadBuildingDevMove(player))
-                    elif dev_type == Consts.DevType.KNIGHT:
-                        robber_hex = self.board().robber_hex()
-                        for hex_tile in self.board().hexes():
-                            if hex_tile is not robber_hex and hex_tile.resource() != Consts.ResourceType.DESERT:
-                                opponents_on_hex = set()
-                                for node in hex_tile.nodes():
-                                    if self.board().nodes().get(node) is not None:  # TODO board.node_occupied() ?
-                                        opp = self.board().nodes().get(node).player()
-                                        if opp != player:
-                                            opponents_on_hex.add(opp)
-                                if opponents_on_hex:
-                                    for opp in opponents_on_hex:
-                                        moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), opp))
-                                else:
-                                    moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None))
-
-                    elif dev_type == Consts.DevType.VP:
-                        moves.append(Moves.UseDevMove(player, dev_type))
-
-        ### BUILD ###
-        # Build settlement legality
-        if (self.__can_purchase(player, Consts.PurchasableType.SETTLEMENT) and
-                self.__has_remaining_settlements(player)):
-            # print('CAN BUY SETTLEMENT, BUILDABLE NODES:')
-            for node in self.__buildable_nodes(player):
-                # print(node)
-                moves.append(Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node))
-
-        # build city legality
-        if (self.__can_purchase(player, Consts.PurchasableType.CITY) and
-                self.__has_remaining_cities(player)):
-            # print('CAN BUY CITY, SETTLE NODES:')
-            for settlement_node in player.settlement_nodes():
-                # print(settlement_node)
-                moves.append(Moves.BuildMove(player, Consts.PurchasableType.CITY, settlement_node))
-
-        # build road legality
-        if (self.__can_purchase(player, Consts.PurchasableType.ROAD) and
-                self.__has_remaining_roads(player)):
-            # print('CAN BUY ROAD, BUILDABLE EDGES:')
-            for edge_id in self.__buildable_edges(player):
-                # print(edge_id)
-                moves.append(Moves.BuildMove(player, Consts.PurchasableType.ROAD, edge_id))
-
-        ### TRADE ###
-        # trade legality with deck
-        for homogeneous_hand in self.__homogeneous_hands_of_size(player, Consts.DECK_TRADE_RATIO):
-            for available_resource in self.__available_resources():
-                if [card for card in homogeneous_hand][0] != available_resource:
-                    moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
-
-        # trade legality with general harbor
-        if self.__has_general_harbor(player):
-            for homogeneous_hand in self.__homogeneous_hands_of_size(player, Consts.GENERAL_HARBOR_TRADE_RATIO):
-                for available_resource in self.__available_resources():
-                    moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
-
-        # trade legality with resource harbor
-        for resource in player.harbor_resources():
-            cards_out = Hand.Hand(*[resource for _ in range(Consts.RESOURCE_HARBOR_TRADE_RATIO)])
-            if player.resource_hand().contains(cards_out):
-                for available_resource in self.__available_resources():
-                    moves.append(Moves.TradeMove(player, cards_out, Hand.Hand(available_resource)))
-
-        return moves
-
-    def __main_game_sim(self) -> List[Moves.Move]:
-        curr_player = self.__curr_player_sim
-        self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
-
-        self.__dice.roll()
-        dprint('\n\n' + '*' * 100)
-        dprint('*' * 45, 'SIM NEXT TURN', '*' * 44)
-        dprint('*' * 100 + '\n')
-
-        dprint(f'[RUN GAME] Rolling dice... {self.__dice.sum()} rolled')
-        if self.__dice.sum() == Consts.ROBBER_DICE_VALUE:  # robber activated
-            dprint('[RUN GAME] Robber Activated! Checking for oversized hands...')
-
-            # remove cards from oversized hands
-            self.__phase = GamePhase.ROBBER_THROW
-            for player in self.players():
-                player_hand_size = player.resource_hand_size()
-                if player_hand_size > Consts.MAX_CARDS_IN_HAND:
-                    self.__throw_player = player
-                    self.__throw_player_hand_size = player_hand_size - (player_hand_size // 2)
-                    self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
-                    return self.__possible_moves_this_phase
-
-        else:  # not robber
-            # distribute resources
-            dprint(f'[RUN GAME] distributing resources...')
-            dist = self.__board.resource_distributions(self.__dice.sum())
-            for player, hand in dist.items():
-                removed = self.__res_deck.remove_as_much(hand)
-                player.receive_cards(removed)
-                dprint(f'[RUN GAME] player {player} received {removed}, '
-                       f'now has {player.resource_hand()}')
-
-        # query player for move #
-        self.__phase = GamePhase.MAKE_MOVE
-        moves_available = self.get_possible_moves(curr_player)
-        dprint(f'[RUN GAME] player {curr_player} can play:\n')
-        dprint('\n'.join(m.info() for m in moves_available) + '\n')
-        self.__possible_moves_this_phase = moves_available
-        return self.__possible_moves_this_phase
-
-    def __robber_place_sim(self, move: Moves.UseKnightDevMove) -> List[Moves.Move]:
-        knight_move = move
-        curr_player = self.__curr_player_sim
-
-        robber_hex = knight_move.hex_id()
-        opp = knight_move.take_from()
-        self.__robber_protocol(curr_player, robber_hex, opp, printout=False, mock=True)
-
-        # query player for move #
-        self.__phase = GamePhase.MAKE_MOVE
-        moves_available = self.get_possible_moves(curr_player)
-        self.__possible_moves_this_phase = moves_available
-        return self.__possible_moves_this_phase
-
-    def __robber_throw_sim(self, move_to_play: Moves.ThrowMove) -> List[Moves.Move]:
-        player = self.__throw_player
-        throw_move = move_to_play
-
-        cards_thrown = throw_move.throws()
-        player.throw_cards(cards_thrown)
-        self.__res_deck.insert(cards_thrown)
-        if player.resource_hand().size() > self.__throw_player_hand_size:
-            self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
-            return self.__possible_moves_this_phase
-        else:
-            next_player_idx = self.players().index(player) + 1
-            while next_player_idx < len(self.players()):
-                next_player = self.players()[next_player_idx]
-                next_player_hand_size = next_player.resource_hand().size()
-                if next_player_hand_size > Consts.MAX_CARDS_IN_HAND:
-                    self.__throw_player = next_player
-                    self.__throw_player_hand_size = next_player_hand_size - (next_player_hand_size // 2)
-                    self.__possible_moves_this_phase = self.__get_possible_throw_moves(self.__throw_player)
-                    return self.__possible_moves_this_phase
-                else:
-                    next_player_idx += 1
-
-        # move robber
-        self.__phase = GamePhase.ROBBER_PLACE
-        knight_moves = self.__get_possible_knight_moves(self.__curr_player_sim, robber=True)
-        self.__possible_moves_this_phase = knight_moves
-        return self.__possible_moves_this_phase
-
-    def __make_move_sim(self, move_to_play: Moves.Move) -> List[Moves.Move]:
-        curr_player = self.__curr_player_sim
-
-        vp_before = curr_player.vp()
-        self.__apply_move(move_to_play, mock=True)
-        vp_after = curr_player.vp()
-        self.__vp_earned_this_phase = vp_after - vp_before
-
-        if move_to_play.get_type() != Moves.MoveType.PASS:
-            moves_available = self.get_possible_moves(curr_player)
-            self.__possible_moves_this_phase = moves_available
-            return self.__possible_moves_this_phase
-
-        elif self.is_game_over():
-            self.__phase = GamePhase.GAME_OVER
-            dprint(f'\n\n\nGAME OVER - player {curr_player} won!!!')
-            self.__possible_moves_this_phase = []
-            return self.__possible_moves_this_phase
-        else:   # continue to next player
-            next_player_idx = (self.players().index(curr_player) + 1) % len(self.players())
-            self.__curr_player_sim = self.players()[next_player_idx]
-            return self.__main_game_sim()
-
-    def __pre_game_road_sim(self, move_to_play: Moves.BuildMove) -> List[Moves.Move]:
-        build_adj_road_move = move_to_play
-        curr_player = self.__curr_player_sim
-        _round = self.__pre_game_round
-        settlement_node = self.__pre_game_settlement_node
-
-        # add new road to game
-        road_edge = build_adj_road_move.at()
-        road = Buildable.Buildable(curr_player, road_edge, Consts.PurchasableType.ROAD)
-        curr_player.add_buildable(road)
-        self.__board.build(road)
-
-        if _round == 2:  # second round, yield resources from settlement
-            starting_resources = self.__board.resource_distributions_by_node(settlement_node)
-            self.__res_deck.remove(starting_resources)
-            curr_player.receive_cards(starting_resources)
-
-        # new - update round and player
-        if _round == 1:
-            next_player_idx = (self.players().index(curr_player) + 1) % len(self.players())
-            if next_player_idx == 0:  # round ended
-                self.__pre_game_round = 2
-                self.__curr_player_sim = self.players()[-1]
-            else:
-                self.__curr_player_sim = self.players()[next_player_idx]
-        else:  # round 2
-            next_player_idx = (self.players().index(curr_player) - 1) % len(self.players())
-            if next_player_idx == len(self.players()) - 1:  # 2nd round ended
-                self.__curr_player_sim = self.players()[0]
-                # start main game
-                return self.__main_game_sim()
-            else:
-                self.__curr_player_sim = self.players()[next_player_idx]
-
-        self.__phase = GamePhase.PRE_GAME_SETTLEMENT
-        settlement_moves = self.__get_possible_build_settlement_moves(self.__curr_player_sim, pre_game=True)
-        self.__possible_moves_this_phase = settlement_moves
-        return self.__possible_moves_this_phase
-
-    def __pre_game_settlement_sim(self, move_to_play: Moves.BuildMove) -> List[Moves.Move]:
-        # add new settlement to game
-        curr_player = self.__curr_player_sim
-        build_settlement_move = move_to_play
-        settlement_node = build_settlement_move.at()
-        self.__pre_game_settlement_node = settlement_node
-        settlement = Buildable.Buildable(curr_player, settlement_node, Consts.PurchasableType.SETTLEMENT)
-        curr_player.add_buildable(settlement)
-        self.__board.build(settlement)
-
-        dprint(self.board())
-
-        # get player's choice of road
-        self.__phase = GamePhase.PRE_GAME_ROAD
-        adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
-        possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
-                               for edge in adj_edges]
-        self.__possible_moves_this_phase = possible_road_moves
-        return self.__possible_moves_this_phase
-
-    def __update_player_sim(self, curr_player: Player) -> None:
-        p_i = 0
-        for i, p in enumerate(self.players()):
-            if p == curr_player:
-                p_i = i
-                break
-
-        next_player_idx = (p_i + 1) % len(self.players())
-        self.__curr_player_sim = self.players()[next_player_idx]
-
-    def __start_sim(self) -> List[Moves.BuildMove]:
-        _round = self.__pre_game_round
-        curr_player = self.__curr_player_sim
-        self.__phase = GamePhase.PRE_GAME_SETTLEMENT
-        self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player, pre_game=True)
-        return self.__possible_moves_this_phase
-
-    def got_illegal_move(self) -> bool:
-        return self.__illegal_move
 
     def simulate_game(self, move_to_play: Moves.Move = None) -> List[Moves.Move]:
         if self.__phase == GamePhase.START:
@@ -544,51 +242,65 @@ class GameSession:
 
     def simulate_move(self, move: Moves.Move) -> GameSession:
         state = deepcopy(self)
-        # print('***************************************************APPLYING MOCK MOVE', move.info(), 'TO STATE ', state)
         for p in state.players():
             if p.get_id() == move.player().get_id():
                 new_player_obj = p
-                break
+                new_move = deepcopy(move)
+                new_move.set_player(new_player_obj)
+                state.__apply_move(new_move, printout=False, mock=True)
+                return state
+
         else:
             print('ERROR didnt find new player obj in deepcopy')
-        new_move = deepcopy(move)
-        new_move.set_player(new_player_obj)
-        state.__apply_move(new_move, printout=False, mock=True)
-        return state
 
-    def sim_current_player(self) -> Player:
-        return self.__curr_player_sim
+    def possible_moves(self) -> List[Moves.Move]:
+        return self.__possible_moves_this_phase
 
-    def info(self) -> str:
-        ret_val = []
-        ret_val.append(f'[TURN] turn belongs to player = {self.current_player()}')
-        ret_val.append(f'[TURN] total turns played so far = {self.__num_turns_played}')
-        ret_val.append(self.__dice.info())
-        ret_val.append(f'\n[LARGEST ARMY] player {self.largest_army_player()}')
-        ret_val.append(f'[LONGEST ROAD] player {self.longest_road_player()}')
-        ret_val.append('[SCORES] {}\n'.format(', '.join(
-            f'player {p_id} = {player.vp()}VP' for p_id, player in enumerate(self.players()))))
-        for p in self.players():
-            ret_val.append(p.info())
-        ret_val.append(self.__board.info())
-        ret_val.append(f'\n[DECKS] cards in play\n[RESOURCES DECK] num cards = {self.__res_deck.size()} / {Consts.NUM_RESOURCES}\n' +
-                       '\n'.join('[RESOURCES DECK] {} = {} / {}'.format(
-                           r.name, self.__res_deck.cards_of_type(r).size(), amount)
-                                 for r, amount in Consts.RESOURCE_COUNTS.items()))
-        ret_val.append(f'[DEVS DECK] num cards = {self.__dev_deck.size()} / {Consts.NUM_DEVS}\n' +
-                       '\n'.join('[DEVS DECK] {} = {} / {}'.format(
-                           d.name, self.__dev_deck.cards_of_type(d).size(), amount)
-                                 for d, amount in Consts.DEV_COUNTS.items()))
-        return '\n'.join(ret_val)
+    def potential_probability_score(self, player: Player) -> float:
+        def get_player_nodes(p):
+            all_nodes = []
+            for edge in p.road_edges():
+                all_nodes.extend(hexgrid.nodes_touching_edge(edge))
+            return all_nodes
+
+        def get_almost_buildable_nodes(p):
+            player_nodes = get_player_nodes(p)
+            adj_to_player_nodes = set()
+            for player_node in player_nodes:
+                for adj_node in self.board().get_adj_nodes_to_node(player_node):
+                    if self.__is_distant_node(adj_node) and adj_node not in player_nodes:
+                        adj_to_player_nodes.add(adj_node)
+            return list(adj_to_player_nodes)
+
+        prob_score = 0
+        buildable_nodes = self.__buildable_nodes(player)
+
+        almost_buildable_nodes = get_almost_buildable_nodes(player)
+        almost_buildable_coeff = 0.3
+        buildable_coeff = 0.6
+        hex_ids = []
+        for node in buildable_nodes:
+            hex_ids.extend(self.board().get_adj_tile_ids_to_node(node))
+        for token in [self.board().hexes()[h_id].token() for h_id in hex_ids]:
+            if token > 0:
+                prob_score += buildable_coeff * Dice.PROBABILITIES[token]
+
+        hex_ids = []
+        for node in almost_buildable_nodes:
+            hex_ids.extend(self.board().get_adj_tile_ids_to_node(node))
+        for token in [self.board().hexes()[h_id].token() for h_id in hex_ids]:
+            if token > 0:
+                prob_score += almost_buildable_coeff * Dice.PROBABILITIES[token]
+
+        return prob_score
 
     def status_table(self) -> str:
-        table = []
-        table.append(['Player'] + [player for player in self.players()])
-        table.append(['VP'] + [player.vp() for player in self.players()])
-        table.append(['Agent'] + [str(player.agent()) for player in self.players()])
-        table.append(['Road Len'] + [self.board().road_len(player) for player in self.players()])
-        table.append(['Longest Road'] + ['X' if player.has_longest_road() else '' for player in self.players()])
-        table.append(['Largest Army'] + ['X' if player.has_largest_army() else '' for player in self.players()])
+        table = [['Player'] + [player for player in self.players()],
+                 ['VP'] + [player.vp() for player in self.players()],
+                 ['Agent'] + [str(player.agent()) for player in self.players()],
+                 ['Road Len'] + [str(self.board().road_len(player)) for player in self.players()],
+                 ['Longest Road'] + ['X' if player.has_longest_road() else '' for player in self.players()],
+                 ['Largest Army'] + ['X' if player.has_largest_army() else '' for player in self.players()]]
 
         player_harbors = [p.harbors() for p in self.players()]
         max_harbors = max(len(harbors) for harbors in player_harbors)
@@ -601,26 +313,30 @@ class GameSession:
         max_cities = max(1, max(p.num_cities() for p in self.players()))
         for city_idx in range(max_cities):
             table.append(
-                (['Cities'] if city_idx  == 0 else ['']) + [(hex(player.city_nodes()[city_idx]) if city_idx < len(player.city_nodes())
-                                        else '') for player in self.players()])
+                (['Cities'] if city_idx == 0 else ['']) + [
+                    (hex(player.city_nodes()[city_idx]) if city_idx < len(player.city_nodes())
+                     else '') for player in self.players()])
 
         max_settles = max(1, max(p.num_settlements() for p in self.players()))
         for settle_idx in range(max_settles):
             table.append(
-                (['Settlements'] if settle_idx  == 0 else ['']) + [(hex(player.settlement_nodes()[settle_idx]) if settle_idx < len(player.settlement_nodes())
-                                    else '') for player in self.players()])
+                (['Settlements'] if settle_idx == 0 else ['']) + [
+                    (hex(player.settlement_nodes()[settle_idx]) if settle_idx < len(player.settlement_nodes())
+                     else '') for player in self.players()])
 
         max_roads = max(1, max(p.num_roads() for p in self.players()))
         for road_idx in range(max_roads):
             table.append(
-                (['Roads'] if road_idx  == 0 else ['']) + [(hex(player.road_edges()[road_idx]) if road_idx < len(player.road_edges())
-                              else '') for player in self.players()])
+                (['Roads'] if road_idx == 0 else ['']) + [
+                    (hex(player.road_edges()[road_idx]) if road_idx < len(player.road_edges())
+                     else '') for player in self.players()])
 
         max_res = max(1, max(p.resource_hand_size() for p in self.players()))
         for res_idx in range(max_res):
             table.append(
-                (['Resources'] if res_idx == 0 else ['']) + [([card for card in player.resource_hand()][res_idx] if res_idx < player.resource_hand_size()
-                                  else '') for player in self.players()])
+                (['Resources'] if res_idx == 0 else ['']) + [
+                    ([card for card in player.resource_hand()][res_idx] if res_idx < player.resource_hand_size()
+                     else '') for player in self.players()])
 
         max_res = max(1, max(p.dev_hand_size() for p in self.players()))
         for res_idx in range(max_res):
@@ -646,15 +362,12 @@ class GameSession:
         for line in table:
             if line[0]:
                 string_table += sep + '\n'
-            string_table += '| ' + ' | '.join('{:{}}'.format(str(e), max_widths[i]) for i, e in enumerate(line)) + ' |\n'
+            string_table += '| ' + ' | '.join(
+                '{:{}}'.format(str(e), max_widths[i]) for i, e in enumerate(line)) + ' |\n'
 
         string_table += sep + '\n'
 
         return string_table
-
-    def __transaction(self, hand_from: Hand, hand_to: Hand, cards: Hand) -> None:
-        removed = hand_from.remove_as_much(cards)
-        hand_to.insert(removed)
 
     def __init_turn_order(self, *players: Player.Player) -> List[Player.Player]:
         dprint('[CATAN] Catan game started, players rolling dice to establish turn order')
@@ -688,19 +401,16 @@ class GameSession:
         dprint(self.board())
         for _round in (1, 2):
             self.__pre_game_round = _round
-            turn_gen = ((player for player in self.players())               # 0, 1, 2, 3
+            turn_gen = ((player for player in self.players())  # 0, 1, 2, 3
                         if _round == 1 else
-                        (player for player in reversed(self.players())))    # 3, 2, 1, 0
+                        (player for player in reversed(self.players())))  # 3, 2, 1, 0
             for curr_player in turn_gen:
                 self.__curr_player_sim = curr_player
                 # get player's choice of settlement
                 self.__phase = GamePhase.PRE_GAME_SETTLEMENT
-                self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player, pre_game=True)
+                self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player,
+                                                                                              pre_game=True)
                 build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                # while build_settlement_move not in self.__possible_moves_this_phase:
-                #     self.__illegal_move = True
-                #     build_settlement_move = curr_player.choose(self.__possible_moves_this_phase, deepcopy(self))
-                # self.__illegal_move = False
 
                 # add new settlement to game
                 settlement_node = build_settlement_move.at()
@@ -714,14 +424,11 @@ class GameSession:
                 # get player's choice of road
                 self.__phase = GamePhase.PRE_GAME_ROAD
                 adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
-                self.__possible_moves_this_phase = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
-                                       for edge in adj_edges]
+                self.__possible_moves_this_phase = [
+                    Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
+                    for edge in adj_edges]
                 possible_road_moves = self.__possible_moves_this_phase
                 build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
-                # while build_adj_road_move not in self.__possible_moves_this_phase:
-                #     self.__illegal_move = True
-                #     build_adj_road_move = curr_player.choose(possible_road_moves, deepcopy(self))
-                # self.__illegal_move = False
 
                 # add new road to game
                 road_edge = build_adj_road_move.at()
@@ -742,15 +449,8 @@ class GameSession:
                 dprint(self.board())
                 dprint(self.status_table())
 
-
-    def is_game_over(self) -> bool:
-        return any(player.vp() >= Consts.WINNING_VP for player in self.players())
-
-    def possible_moves_this_phase(self) -> List[Moves.Move]:
-        return self.__possible_moves_this_phase
-
     def __robber_protocol(self, curr_player: Player.Player, robber_hex_id: int, opp: Player.Player,
-                          printout=True, mock=False) -> None:
+                          printout=True) -> None:
         self.__board.move_robber_to(robber_hex_id)
         if printout:
             dprint(f'[ROBBER PROTOCOL] player {curr_player} placed robber at hex id {robber_hex_id}')
@@ -775,8 +475,6 @@ class GameSession:
             # take card from player
             opp_hand = opp.resource_hand()
             if opp_hand.size():
-                # TODO should not be unknown since agent theoretically knows all cards in players hand, sim doesnt reveal info
-                # removed_card = Hand.Hand(Consts.ResourceType.UNKNOWN) if mock else opp_hand.remove_random_card()
                 removed_card = opp_hand.remove_random_card()
                 curr_player.receive_cards(removed_card)
                 if printout:
@@ -861,7 +559,7 @@ class GameSession:
 
                     hex_id = move.hex_id()
                     opp = move.take_from()
-                    self.__robber_protocol(player, hex_id, opp, printout=printout, mock=mock)
+                    self.__robber_protocol(player, hex_id, opp, printout=printout)
 
                 elif isinstance(move, Moves.UseMonopolyDevMove):
                     hand_gained = Hand.Hand()
@@ -882,11 +580,14 @@ class GameSession:
 
                 elif isinstance(move, Moves.UseRoadBuildingDevMove):
                     for _ in range(Consts.ROAD_BUILDING_NUM_ROADS):
-                        possible_road_moves = self.__get_possible_build_road_moves(player, free=True)
+                        self.__possible_moves_this_phase = self.__get_possible_build_road_moves(player, free=True)
+                        possible_road_moves = self.__possible_moves_this_phase
                         if not possible_road_moves:
                             break
+
                         road_move = player.choose(possible_road_moves, deepcopy(self))
-                        possible_road_moves.remove(road_move)
+
+                        assert isinstance(road_move, Moves.BuildMove)
                         road = Buildable.Buildable(player, road_move.at(), Consts.PurchasableType.ROAD)
                         self.__board.build(road)
                         player.add_buildable(road)
@@ -928,7 +629,6 @@ class GameSession:
         players_hand = player.resource_hand()
         item_cost = Consts.COSTS.get(item)
         retval = players_hand.contains(item_cost)
-        # print(f'CAN PURCHASE: player {player_id}, player hand {players_hand}, to purchase {item.name} --> {retval}')
         return retval
 
     @staticmethod
@@ -943,43 +643,150 @@ class GameSession:
     def __has_remaining_roads(player: Player.Player) -> bool:
         return player.num_roads() < Consts.MAX_ROADS_PER_PLAYER
 
-    def potential_probability_score(self, player: Player) -> float:
-        def get_player_nodes(player):
-            all_nodes = []
-            for edge in player.road_edges():
-                all_nodes.extend(hexgrid.nodes_touching_edge(edge))
-            return all_nodes
+    @staticmethod
+    def __has_general_harbor(player: Player.Player) -> bool:
+        return Consts.ResourceType.ANY in player.harbor_resources()
 
-        def get_almost_buildable_nodes(player):
-            player_nodes = get_player_nodes(player)
-            adj_to_player_nodes = set()
-            for node in player_nodes:
-                for adj_node in self.board().get_adj_nodes_to_node(node):
-                    if self.__is_distant_node(adj_node) and adj_node not in player_nodes:
-                        adj_to_player_nodes.add(adj_node)
-            return list(adj_to_player_nodes)
+    @staticmethod
+    def __homogeneous_hands_of_size(player: Player.Player, sz: int) -> List[Hand.Hand]:
+        hands = []
+        players_hand = player.resource_hand()
+        for resource in Consts.ResourceType:
+            homogeneous_hand = Hand.Hand(*(resource for _ in range(sz)))
+            if players_hand.contains(homogeneous_hand):
+                hands.append(homogeneous_hand)
+        return hands
 
-        prob_score = 0
-        buildable_nodes = self.__buildable_nodes(player)
+    @staticmethod
+    def __get_possible_throw_moves(player: Player.Player) -> List[Moves.ThrowMove]:
+        players_cards = list(set([card for card in player.resource_hand() if card in Consts.YIELDING_RESOURCES]))
+        throw_moves = [Moves.ThrowMove(player, Hand.Hand(card)) for card in players_cards]
+        return throw_moves
 
-        almost_buildable_nodes = get_almost_buildable_nodes(player)
-        almost_buildable_coeff = 0.3
-        buildable_coeff = 0.6
-        hex_ids = []
-        for node in buildable_nodes:
-            hex_ids.extend(self.board().get_adj_tile_ids_to_node(node))
-        for token in [self.board().hexes()[h_id].token() for h_id in hex_ids]:
-            if token > 0:
-                prob_score += buildable_coeff * Dice.PROBABILITIES[token]
+    def __get_possible_knight_moves(self, player: Player.Player, robber: bool = False) -> List[Moves.UseKnightDevMove]:
+        moves = []
+        dev_type = Consts.DevType.KNIGHT
+        if robber or player.dev_hand().contains(Hand.Hand(dev_type)):  # if has it
+            # if wasnt bought this turn or had at least 1 more from before this turn
+            if robber or (dev_type not in self.__dev_cards_bought_this_turn or
+                          player.dev_hand().cards_of_type(dev_type).size() >
+                          self.__dev_cards_bought_this_turn.cards_of_type(dev_type).size()):
+                robber_hex = self.board().robber_hex()
+                for hex_tile in self.board().hexes():  # get hex, cant place at same place or back at desert
+                    if hex_tile is not robber_hex and hex_tile.resource() != Consts.ResourceType.DESERT:
+                        opponents_on_hex = []  # finding opponents with buildables around hex
+                        for node in hex_tile.nodes():  # get node around hex that is occupied
+                            if self.board().nodes().get(node) is not None:
+                                opp = self.board().nodes().get(node).player()
+                                if opp != player and opp not in opponents_on_hex:  # if its not occupied by you...
+                                    opponents_on_hex.append(opp)  # then its an opponent
+                        if opponents_on_hex:
+                            for opp in opponents_on_hex:
+                                moves.append(
+                                    Moves.UseKnightDevMove(player, hex_tile.id(), opp, robber_activated=robber))
+                        else:  # no opponents, make move without opp id
+                            moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None, robber_activated=robber))
+        return moves
 
-        hex_ids = []
-        for node in almost_buildable_nodes:
-            hex_ids.extend(self.board().get_adj_tile_ids_to_node(node))
-        for token in [self.board().hexes()[h_id].token() for h_id in hex_ids]:
-            if token > 0:
-                prob_score += almost_buildable_coeff * Dice.PROBABILITIES[token]
+    def __get_possible_build_road_moves(self, player: Player.Player, free: bool = False) -> List[Moves.BuildMove]:
+        moves = []
+        if self.__has_remaining_roads(player):
+            moves = [Moves.BuildMove(player, Consts.PurchasableType.ROAD, edge, free=free)
+                     for edge in self.__buildable_edges(player)]
+        return moves
 
-        return prob_score
+    def __get_possible_build_settlement_moves(self, player: Player.Player,
+                                              pre_game: bool = False) -> List[Moves.BuildMove]:
+        moves = [Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node, free=pre_game)
+                 for node in self.__buildable_nodes(player, pre_game)]
+        return moves
+
+    def __get_possible_moves(self, player: Player.Player) -> List[Moves.Move]:
+
+        # PASS TURN #
+        moves = [Moves.Move(player, Moves.MoveType.PASS)]
+
+        # BUY #
+        # Buy Dev Move Legality
+        if (self.__can_purchase(player, Consts.PurchasableType.DEV_CARD) and
+                self.__dev_deck.size() > 0):
+            moves.append(Moves.BuyDevMove(player))
+
+        # USE #
+        # Use Dev Card Legality
+        for dev_type in Consts.DevType:  # get dev card type
+            if player.dev_hand().contains(Hand.Hand(dev_type)):  # if has it
+                # if wasnt bought this turn or had at least 1 more from before this turn
+                if (dev_type not in self.__dev_cards_bought_this_turn or
+                        player.dev_hand().cards_of_type(dev_type).size() >
+                        self.__dev_cards_bought_this_turn.cards_of_type(dev_type).size()):
+                    if dev_type == Consts.DevType.MONOPOLY:
+                        for resource in Consts.YIELDING_RESOURCES:
+                            moves.append(Moves.UseMonopolyDevMove(player, resource))
+                    elif dev_type == Consts.DevType.YEAR_OF_PLENTY:
+                        for resource_comb in combinations(Consts.YIELDING_RESOURCES, Consts.YOP_NUM_RESOURCES):
+                            moves.append(Moves.UseYopDevMove(player, *resource_comb))
+                    elif dev_type == Consts.DevType.ROAD_BUILDING:
+                        moves.append(Moves.UseRoadBuildingDevMove(player))
+                    elif dev_type == Consts.DevType.KNIGHT:
+                        robber_hex = self.board().robber_hex()
+                        for hex_tile in self.board().hexes():
+                            if hex_tile is not robber_hex and hex_tile.resource() != Consts.ResourceType.DESERT:
+                                opponents_on_hex = set()
+                                for node in hex_tile.nodes():
+                                    if self.board().nodes().get(node) is not None:
+                                        opp = self.board().nodes().get(node).player()
+                                        if opp != player:
+                                            opponents_on_hex.add(opp)
+                                if opponents_on_hex:
+                                    for opp in opponents_on_hex:
+                                        moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), opp))
+                                else:
+                                    moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None))
+
+                    elif dev_type == Consts.DevType.VP:
+                        moves.append(Moves.UseDevMove(player, dev_type))
+
+        # BUILD #
+        # Build settlement legality
+        if (self.__can_purchase(player, Consts.PurchasableType.SETTLEMENT) and
+                self.__has_remaining_settlements(player)):
+            for node in self.__buildable_nodes(player):
+                moves.append(Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node))
+
+        # build city legality
+        if (self.__can_purchase(player, Consts.PurchasableType.CITY) and
+                self.__has_remaining_cities(player)):
+            for settlement_node in player.settlement_nodes():
+                moves.append(Moves.BuildMove(player, Consts.PurchasableType.CITY, settlement_node))
+
+        # build road legality
+        if (self.__can_purchase(player, Consts.PurchasableType.ROAD) and
+                self.__has_remaining_roads(player)):
+            for edge_id in self.__buildable_edges(player):
+                moves.append(Moves.BuildMove(player, Consts.PurchasableType.ROAD, edge_id))
+
+        # TRADE #
+        # trade legality with deck
+        for homogeneous_hand in self.__homogeneous_hands_of_size(player, Consts.DECK_TRADE_RATIO):
+            for available_resource in self.__available_resources():
+                if [card for card in homogeneous_hand][0] != available_resource:
+                    moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
+
+        # trade legality with general harbor
+        if self.__has_general_harbor(player):
+            for homogeneous_hand in self.__homogeneous_hands_of_size(player, Consts.GENERAL_HARBOR_TRADE_RATIO):
+                for available_resource in self.__available_resources():
+                    moves.append(Moves.TradeMove(player, homogeneous_hand, Hand.Hand(available_resource)))
+
+        # trade legality with resource harbor
+        for resource in player.harbor_resources():
+            cards_out = Hand.Hand(*[resource for _ in range(Consts.RESOURCE_HARBOR_TRADE_RATIO)])
+            if player.resource_hand().contains(cards_out):
+                for available_resource in self.__available_resources():
+                    moves.append(Moves.TradeMove(player, cards_out, Hand.Hand(available_resource)))
+
+        return moves
 
     def __buildable_nodes(self, player: Player.Player, pre_game: bool = False) -> List[int]:
         player_nodes = set()
@@ -990,7 +797,6 @@ class GameSession:
                 for node in hexgrid.nodes_touching_edge(edge_id):
                     if self.board().nodes().get(node) is None:
                         player_nodes.add(node)
-            # print('NODEs DISTANT:', [hex(node) for node in player_nodes if self.__is_distant_node(node)])
             return [node for node in player_nodes if self.__is_distant_node(node)]
 
     def __buildable_edges(self, player: Player.Player) -> List[int]:
@@ -1022,20 +828,6 @@ class GameSession:
         adj_nodes = self.__board.get_adj_nodes_to_node(node_id) + [node_id]
         return all(self.__board.nodes().get(adj) is None for adj in adj_nodes)
 
-    @staticmethod
-    def __has_general_harbor(player: Player.Player) -> bool:
-        return Consts.ResourceType.ANY in player.harbor_resources()
-
-    @staticmethod
-    def __homogeneous_hands_of_size(player: Player.Player, sz: int) -> List[Hand.Hand]:
-        hands = []
-        players_hand = player.resource_hand()
-        for resource in Consts.ResourceType:
-            homogeneous_hand = Hand.Hand(*(resource for _ in range(sz)))
-            if players_hand.contains(homogeneous_hand):
-                hands.append(homogeneous_hand)
-        return hands
-
     def __available_resources(self) -> List[Consts.ResourceType]:
         available = []
         for resource in Consts.ResourceType:
@@ -1043,46 +835,180 @@ class GameSession:
                 available.append(resource)
         return available
 
-    def __get_possible_knight_moves(self, player: Player.Player, robber: bool = False) -> List[Moves.UseKnightDevMove]:
-        moves = []
-        dev_type = Consts.DevType.KNIGHT
-        if robber or player.dev_hand().contains(Hand.Hand(dev_type)):  # if has it
-            # if wasnt bought this turn or had at least 1 more from before this turn
-            if robber or (dev_type not in self.__dev_cards_bought_this_turn or
-                    player.dev_hand().cards_of_type(dev_type).size() >
-                    self.__dev_cards_bought_this_turn.cards_of_type(dev_type).size()):
-                robber_hex = self.board().robber_hex()
-                for hex_tile in self.board().hexes():   # get hex, cant place at same place or back at desert
-                    if hex_tile is not robber_hex and hex_tile.resource() != Consts.ResourceType.DESERT:
-                        opponents_on_hex = []        # finding opponents with buildables around hex
-                        for node in hex_tile.nodes():   # get node around hex that is occupied
-                            if self.board().nodes().get(node) is not None:  # TODO board.node_occupied() ?
-                                opp = self.board().nodes().get(node).player()
-                                if opp != player and opp not in opponents_on_hex:  # if its not occupied by you...
-                                    opponents_on_hex.append(opp)    # then its an opponent
-                        if opponents_on_hex:
-                            for opp in opponents_on_hex:
-                                moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), opp, robber_activated=robber))
-                        else:   # no opponents, make move without opp id
-                            moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None, robber_activated=robber))
-        # print('KNIGHT MOVES', moves)
-        return moves
+    def __update_vp_histories(self) -> None:
+        for p in self.players():
+            self.__player_vp_histories[p].append(p.vp())
 
-    @staticmethod
-    def __get_possible_throw_moves(player: Player.Player) -> List[Moves.ThrowMove]:
-        players_cards = list(set([card for card in player.resource_hand() if card in Consts.YIELDING_RESOURCES]))
-        throw_moves = [Moves.ThrowMove(player, Hand.Hand(card)) for card in players_cards]
-        return throw_moves
+    # simulation helpers #
+    def __start_sim(self) -> List[Moves.BuildMove]:
+        _round = self.__pre_game_round
+        curr_player = self.__curr_player_sim
+        self.__phase = GamePhase.PRE_GAME_SETTLEMENT
+        self.__possible_moves_this_phase = self.__get_possible_build_settlement_moves(curr_player, pre_game=True)
+        return self.__possible_moves_this_phase
 
-    def __get_possible_build_road_moves(self, player: Player.Player, free: bool = False) -> List[Moves.BuildMove]:
-        moves = []
-        if self.__has_remaining_roads(player):
-            moves = [Moves.BuildMove(player, Consts.PurchasableType.ROAD, edge, free=free)
-                     for edge in self.__buildable_edges(player)]
-        return moves
+    def __pre_game_settlement_sim(self, move_to_play: Moves.BuildMove) -> List[Moves.Move]:
+        # add new settlement to game
+        curr_player = self.__curr_player_sim
+        build_settlement_move = move_to_play
+        settlement_node = build_settlement_move.at()
+        self.__pre_game_settlement_node = settlement_node
+        settlement = Buildable.Buildable(curr_player, settlement_node, Consts.PurchasableType.SETTLEMENT)
+        curr_player.add_buildable(settlement)
+        self.__board.build(settlement)
 
-    def __get_possible_build_settlement_moves(self, player: Player.Player, pre_game: bool = False) -> List[Moves.BuildMove]:
-        moves = [Moves.BuildMove(player, Consts.PurchasableType.SETTLEMENT, node, free=pre_game)
-                 for node in self.__buildable_nodes(player, pre_game)]
-        # print('POSSIBLE SETTLE MOVES', moves)
-        return moves
+        dprint(self.board())
+
+        # get player's choice of road
+        self.__phase = GamePhase.PRE_GAME_ROAD
+        adj_edges = self.board().get_adj_edges_to_node(build_settlement_move.at())
+        possible_road_moves = [Moves.BuildMove(curr_player, Consts.PurchasableType.ROAD, edge, free=True)
+                               for edge in adj_edges]
+        self.__possible_moves_this_phase = possible_road_moves
+        return self.__possible_moves_this_phase
+
+    def __pre_game_road_sim(self, move_to_play: Moves.BuildMove) -> List[Moves.Move]:
+        build_adj_road_move = move_to_play
+        curr_player = self.__curr_player_sim
+        _round = self.__pre_game_round
+        settlement_node = self.__pre_game_settlement_node
+
+        # add new road to game
+        road_edge = build_adj_road_move.at()
+        road = Buildable.Buildable(curr_player, road_edge, Consts.PurchasableType.ROAD)
+        curr_player.add_buildable(road)
+        self.__board.build(road)
+
+        if _round == 2:  # second round, yield resources from settlement
+            starting_resources = self.__board.resource_distributions_by_node(settlement_node)
+            self.__res_deck.remove(starting_resources)
+            curr_player.receive_cards(starting_resources)
+
+        # new - update round and player
+        if _round == 1:
+            next_player_idx = (self.players().index(curr_player) + 1) % len(self.players())
+            if next_player_idx == 0:  # round ended
+                self.__pre_game_round = 2
+                self.__curr_player_sim = self.players()[-1]
+            else:
+                self.__curr_player_sim = self.players()[next_player_idx]
+        else:  # round 2
+            next_player_idx = (self.players().index(curr_player) - 1) % len(self.players())
+            if next_player_idx == len(self.players()) - 1:  # 2nd round ended
+                self.__curr_player_sim = self.players()[0]
+                # start main game
+                return self.__main_game_sim()
+            else:
+                self.__curr_player_sim = self.players()[next_player_idx]
+
+        self.__phase = GamePhase.PRE_GAME_SETTLEMENT
+        settlement_moves = self.__get_possible_build_settlement_moves(self.__curr_player_sim, pre_game=True)
+        self.__possible_moves_this_phase = settlement_moves
+        return self.__possible_moves_this_phase
+
+    def __main_game_sim(self) -> List[Moves.Move]:
+        curr_player = self.__curr_player_sim
+        self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
+
+        self.__dice.roll()
+        dprint('\n\n' + '*' * 100)
+        dprint('*' * 45, 'SIM NEXT TURN', '*' * 44)
+        dprint('*' * 100 + '\n')
+
+        dprint(f'[RUN GAME] Rolling dice... {self.__dice.sum()} rolled')
+        if self.__dice.sum() == Consts.ROBBER_DICE_VALUE:  # robber activated
+            dprint('[RUN GAME] Robber Activated! Checking for oversized hands...')
+
+            # remove cards from oversized hands
+            self.__phase = GamePhase.ROBBER_THROW
+            for player in self.players():
+                player_hand_size = player.resource_hand_size()
+                if player_hand_size > Consts.MAX_CARDS_IN_HAND:
+                    self.__throw_player = player
+                    self.__throw_player_hand_size = player_hand_size - (player_hand_size // 2)
+                    self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
+                    return self.__possible_moves_this_phase
+
+        else:  # not robber
+            # distribute resources
+            dprint(f'[RUN GAME] distributing resources...')
+            dist = self.__board.resource_distributions(self.__dice.sum())
+            for player, hand in dist.items():
+                removed = self.__res_deck.remove_as_much(hand)
+                player.receive_cards(removed)
+                dprint(f'[RUN GAME] player {player} received {removed}, '
+                       f'now has {player.resource_hand()}')
+
+        # query player for move #
+        self.__phase = GamePhase.MAKE_MOVE
+        moves_available = self.__get_possible_moves(curr_player)
+        dprint(f'[RUN GAME] player {curr_player} can play:\n')
+        dprint('\n'.join(m.info() for m in moves_available) + '\n')
+        self.__possible_moves_this_phase = moves_available
+        return self.__possible_moves_this_phase
+
+    def __robber_throw_sim(self, move_to_play: Moves.ThrowMove) -> List[Moves.Move]:
+        player = self.__throw_player
+        throw_move = move_to_play
+
+        cards_thrown = throw_move.throws()
+        player.throw_cards(cards_thrown)
+        self.__res_deck.insert(cards_thrown)
+        if player.resource_hand().size() > self.__throw_player_hand_size:
+            self.__possible_moves_this_phase = self.__get_possible_throw_moves(player)
+            return self.__possible_moves_this_phase
+        else:
+            next_player_idx = self.players().index(player) + 1
+            while next_player_idx < len(self.players()):
+                next_player = self.players()[next_player_idx]
+                next_player_hand_size = next_player.resource_hand().size()
+                if next_player_hand_size > Consts.MAX_CARDS_IN_HAND:
+                    self.__throw_player = next_player
+                    self.__throw_player_hand_size = next_player_hand_size - (next_player_hand_size // 2)
+                    self.__possible_moves_this_phase = self.__get_possible_throw_moves(self.__throw_player)
+                    return self.__possible_moves_this_phase
+                else:
+                    next_player_idx += 1
+
+        # move robber
+        self.__phase = GamePhase.ROBBER_PLACE
+        knight_moves = self.__get_possible_knight_moves(self.__curr_player_sim, robber=True)
+        self.__possible_moves_this_phase = knight_moves
+        return self.__possible_moves_this_phase
+
+    def __robber_place_sim(self, move: Moves.UseKnightDevMove) -> List[Moves.Move]:
+        knight_move = move
+        curr_player = self.__curr_player_sim
+
+        robber_hex = knight_move.hex_id()
+        opp = knight_move.take_from()
+        self.__robber_protocol(curr_player, robber_hex, opp, printout=False)
+
+        # query player for move #
+        self.__phase = GamePhase.MAKE_MOVE
+        moves_available = self.__get_possible_moves(curr_player)
+        self.__possible_moves_this_phase = moves_available
+        return self.__possible_moves_this_phase
+
+    def __make_move_sim(self, move_to_play: Moves.Move) -> List[Moves.Move]:
+        curr_player = self.__curr_player_sim
+
+        vp_before = curr_player.vp()
+        self.__apply_move(move_to_play, mock=True)
+        vp_after = curr_player.vp()
+        self.__vp_earned_this_phase = vp_after - vp_before
+
+        if move_to_play.get_type() != Moves.MoveType.PASS:
+            moves_available = self.__get_possible_moves(curr_player)
+            self.__possible_moves_this_phase = moves_available
+            return self.__possible_moves_this_phase
+
+        elif self.is_game_over():
+            self.__phase = GamePhase.GAME_OVER
+            dprint(f'\n\n\nGAME OVER - player {curr_player} won!!!')
+            self.__possible_moves_this_phase = []
+            return self.__possible_moves_this_phase
+        else:  # continue to next player
+            next_player_idx = (self.players().index(curr_player) + 1) % len(self.players())
+            self.__curr_player_sim = self.players()[next_player_idx]
+            return self.__main_game_sim()

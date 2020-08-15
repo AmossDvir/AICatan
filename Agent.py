@@ -144,27 +144,14 @@ class OneMoveHeuristicAgent(Agent):
         # print('\n' + move.info() + '\n')
         return move
 
+
 class ProbabilityAgent(Agent):
     def __init__(self):
         super().__init__(AgentType.PROBABILITY)
+        self.__harry = OneMoveHeuristicAgent(probability_score_heuristic)
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
-        move_vals = []
-        for move in moves:
-
-            new_state = deepcopy(state)
-            new_state = new_state.simulate_move(move)
-            # get heuristic value on new_state
-            for p in new_state.players():
-                if p.get_id() == player.get_id():
-                    move_vals.append(probability_score_heuristic(state, player))
-
-        max_val = max(move_vals)
-        argmax_vals_indices = [i for i, val in enumerate(move_vals) if val == max_val]
-        moves = [moves[i] for i in argmax_vals_indices]
-        move = RandomAgent().choose(moves, player, state)
-
-        return move
+        return self.__harry.choose(moves, player, state)
 
 class OptimizedHeuristicAgent(Agent):
     # using the one move heuristic method
@@ -340,14 +327,14 @@ class ExpectimaxProbAgent(Agent):
         #     else:
         #         session.simulate_game(self.choose(possible_moves, my_player, session))
 
-        while session.current_player() == my_player and session.possible_moves_this_phase():
-            session.simulate_game(self.__harry.choose(session.possible_moves_this_phase(),
+        while session.current_player() == my_player and session.possible_moves():
+            session.simulate_game(self.__harry.choose(session.possible_moves(),
                                                       session.current_player(),
                                                       session))
 
     def sim_opps(self, session, my_player):
-        while session.current_player() != my_player and session.possible_moves_this_phase():
-            move_played = self.__randy.choose(session.possible_moves_this_phase(),
+        while session.current_player() != my_player and session.possible_moves():
+            move_played = self.__randy.choose(session.possible_moves(),
                                               session.current_player(),
                                               session)
             session.simulate_game(move_played)
