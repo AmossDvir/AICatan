@@ -837,7 +837,7 @@ class GameSession:
 
     def __update_vp_histories(self) -> None:
         for p in self.players():
-            self.__player_vp_histories[p].append(p.vp())
+            self.__player_vp_histories[str(p)].append(p.vp())
 
     # simulation helpers #
     def __start_sim(self) -> List[Moves.BuildMove]:
