@@ -7,7 +7,7 @@ import Agent
 import Heuristics
 import argparse
 
-VECTOR_SIZE = 11
+VECTOR_SIZE = 12
 EPSILON_CHILD = 0.1
 MUTATE_DEVIATION = 0.3
 GENERATING_MEAN = 1.5
@@ -15,9 +15,9 @@ GENERATING_DEVIATION = 1
 ROUND_SIZE = 10
 
 # The dafualt weights now in the heauristic.py file
-BASE_VECTOR = [2, 0.8, 0.2, 0.6, 0.7, 2.5, 0.5, 5, 2, 1, 1]
-ONE_VECTOR = [0.26, 0.22, 0.1, 0.56, -0.3, 2.78, 0.21, 6.05, 1.72, 1.85, 0.05]
-LATEST_VECTOR = [0.35, 0.2, 0.58, 0.75, 0.14, 2.61, 0.44, 5.3, 2.02, 1.28, 1.68]
+BASE_VECTOR = [2, 0.8, 0.2, 0.6, 0.7, 2.5, 0.5, 5, 2, 1, 1, 0.5]
+ONE_VECTOR = [0.26, 0.22, 0.1, 0.56, -0.3, 2.78, 0.21, 6.05, 1.72, 1.85, 0.05, 0.43]
+LATEST_VECTOR = [0.35, 0.2, 0.58, 0.75, 0.14, 2.61, 0.44, 5.3, 2.02, 1.28, 0.39]
 
 """
 The vectors are telling the agent how much value to give to each heuristic.
@@ -106,14 +106,14 @@ def vec_to_agent(vector):
     """
     Returns a new agent based on the given vector
     """
-    heur = lambda session, player: Heuristics.linear_heuristic(session, player, vector)
+    heur = Heuristics.Main(weights=tuple(vector))
     return Agent.OneMoveHeuristicAgent(heuristic=heur)
 
 def get_latest_heuristic():
     """
     Returns the latest heuristic that was found with the genetic algorithm
     """
-    return lambda session, player: Heuristics.linear_heuristic(session, player, LATEST_VECTOR)
+    return Heuristics.Main(weights=tuple(LATEST_VECTOR))
 
 
 if __name__ == "__main__":
