@@ -62,7 +62,7 @@ class GameSession:
         self.__throw_player_hand_size = None
         self.__vp_earned_this_phase = 0
         self.__possible_moves_this_phase = []
-        self.__illegal_move = False
+        self.__dev_used_this_turn = False
 
         # Saving a log of game sessions:
         self.__logger = GameLogger.GameLogger(log) if log is not None else None
@@ -72,6 +72,7 @@ class GameSession:
         self.__run_pre_game()
 
         for curr_player in self.__turn_generator(self.__num_players):
+            self.__dev_used_this_turn = False
             self.__vp_earned_this_phase = 0
             self.__curr_player_sim = curr_player
             self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
@@ -561,7 +562,10 @@ class GameSession:
                 if isinstance(move, Moves.UseKnightDevMove) and move.robber_activated():
                     pass
                 else:
+                    if self.__dev_used_this_turn:
+                        print('ERROR, used dev more than once in a turn')
                     player.use_dev(dev_used)  # remove the card
+                    self.__dev_used_this_turn = True
                 if printout:
                     dprint(f'[APPLY MOVE] player {player} used {dev_used} dev card')
 
@@ -728,38 +732,39 @@ class GameSession:
 
         # USE #
         # Use Dev Card Legality
-        for dev_type in Consts.DevType:  # get dev card type
-            if player.dev_hand().contains(Hand.Hand(dev_type)):  # if has it
-                # if wasnt bought this turn or had at least 1 more from before this turn
-                if (dev_type not in self.__dev_cards_bought_this_turn or
-                        player.dev_hand().cards_of_type(dev_type).size() >
-                        self.__dev_cards_bought_this_turn.cards_of_type(dev_type).size()):
-                    if dev_type == Consts.DevType.MONOPOLY:
-                        for resource in Consts.YIELDING_RESOURCES:
-                            moves.append(Moves.UseMonopolyDevMove(player, resource))
-                    elif dev_type == Consts.DevType.YEAR_OF_PLENTY:
-                        for resource_comb in combinations(Consts.YIELDING_RESOURCES, Consts.YOP_NUM_RESOURCES):
-                            moves.append(Moves.UseYopDevMove(player, *resource_comb))
-                    elif dev_type == Consts.DevType.ROAD_BUILDING:
-                        moves.append(Moves.UseRoadBuildingDevMove(player))
-                    elif dev_type == Consts.DevType.KNIGHT:
-                        robber_hex = self.board().robber_hex()
-                        for hex_tile in self.board().hexes():
-                            if hex_tile is not robber_hex and hex_tile.resource() != Consts.ResourceType.DESERT:
-                                opponents_on_hex = set()
-                                for node in hex_tile.nodes():
-                                    if self.board().nodes().get(node) is not None:
-                                        opp = self.board().nodes().get(node).player()
-                                        if opp != player:
-                                            opponents_on_hex.add(opp)
-                                if opponents_on_hex:
-                                    for opp in opponents_on_hex:
-                                        moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), opp))
-                                else:
-                                    moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None))
+        if not self.__dev_used_this_turn:
+            for dev_type in Consts.DevType:  # get dev card type
+                if player.dev_hand().contains(Hand.Hand(dev_type)):  # if has it
+                    # if wasnt bought this turn or had at least 1 more from before this turn
+                    if (dev_type not in self.__dev_cards_bought_this_turn or
+                            player.dev_hand().cards_of_type(dev_type).size() >
+                            self.__dev_cards_bought_this_turn.cards_of_type(dev_type).size()):
+                        if dev_type == Consts.DevType.MONOPOLY:
+                            for resource in Consts.YIELDING_RESOURCES:
+                                moves.append(Moves.UseMonopolyDevMove(player, resource))
+                        elif dev_type == Consts.DevType.YEAR_OF_PLENTY:
+                            for resource_comb in combinations(Consts.YIELDING_RESOURCES, Consts.YOP_NUM_RESOURCES):
+                                moves.append(Moves.UseYopDevMove(player, *resource_comb))
+                        elif dev_type == Consts.DevType.ROAD_BUILDING:
+                            moves.append(Moves.UseRoadBuildingDevMove(player))
+                        elif dev_type == Consts.DevType.KNIGHT:
+                            robber_hex = self.board().robber_hex()
+                            for hex_tile in self.board().hexes():
+                                if hex_tile is not robber_hex and hex_tile.resource() != Consts.ResourceType.DESERT:
+                                    opponents_on_hex = set()
+                                    for node in hex_tile.nodes():
+                                        if self.board().nodes().get(node) is not None:
+                                            opp = self.board().nodes().get(node).player()
+                                            if opp != player:
+                                                opponents_on_hex.add(opp)
+                                    if opponents_on_hex:
+                                        for opp in opponents_on_hex:
+                                            moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), opp))
+                                    else:
+                                        moves.append(Moves.UseKnightDevMove(player, hex_tile.id(), None))
 
-                    elif dev_type == Consts.DevType.VP:
-                        moves.append(Moves.UseDevMove(player, dev_type))
+                        elif dev_type == Consts.DevType.VP:
+                            moves.append(Moves.UseDevMove(player, dev_type))
 
         # BUILD #
         # Build settlement legality
@@ -922,6 +927,7 @@ class GameSession:
 
     def __main_game_sim(self) -> List[Moves.Move]:
         curr_player = self.__curr_player_sim
+        self.__dev_used_this_turn = False
         self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
 
         self.__dice.roll()

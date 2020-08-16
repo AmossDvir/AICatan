@@ -3,15 +3,15 @@ import Moves as Moves
 from Hand import Hand
 from typing import List
 from random import choice
-import Heuristics
+from Heuristics import *
 import Player
 import GameSession
 from copy import deepcopy
 
-import tensorflow as tf
+# import tensorflow as tf
 # from keras.models import Sequential
 # from keras.layers import Dense
-from DQN import get_move_predictions
+# from DQN import get_move_predictions
 
 
 class AgentType(Enum):
@@ -112,7 +112,7 @@ class HumanAgent(Agent):
 class OneMoveHeuristicAgent(Agent):
     """An agent that gets a heuristic, chooses a move that maximizes that heuristic value"""
     # Open the tree only one move forward and apply the given heuristic on it
-    def __init__(self, heuristic: Heuristics.Heuristic = Heuristics.Main()):
+    def __init__(self, heuristic):
         super().__init__(AgentType.ONE_MOVE)
         self.__h = heuristic
         self.__randy = RandomAgent()
@@ -141,7 +141,7 @@ class ProbabilityAgent(Agent):
     """An agent that chooses a move that maximizes the probability heuristic"""
     def __init__(self):
         super().__init__(AgentType.PROBABILITY)
-        self.__harry = OneMoveHeuristicAgent(Heuristics.Probability())
+        self.__harry = OneMoveHeuristicAgent(Probability())
 
     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
         return self.__harry.choose(moves, player, state)
@@ -150,7 +150,7 @@ class ProbabilityAgent(Agent):
 class OptimizedHeuristicAgent(Agent):
     """A heuristic agent that implements helper functions that score move types as well as states"""
     # using the one move heuristic method
-    def __init__(self, heuristic=Heuristics.AmossComb1()):
+    def __init__(self, heuristic):
         super().__init__(AgentType.OPTIMIZED)
         self.__h = heuristic
         self.__randy = RandomAgent()
@@ -234,8 +234,8 @@ class OptimizedHeuristicAgent(Agent):
 class MonteCarloAgent(Agent):
     """An agent that uses a limited depth variant of Monte Carlo (game) tree search with heavy playouts
     (heuristic based). Tree traversal ends with current player's End-of-Turn."""
-    def __init__(self, heuristic: Heuristics.Heuristic, depth: int = 0, iters: int = 1):
-        super().__init__(AgentType.EXPROB)
+    def __init__(self, heuristic, depth: int = 0, iters: int = 1):
+        super().__init__(AgentType.MONTECARLO)
         self.__depth = depth
         self.__iterations = iters
         self.__h = heuristic
@@ -297,17 +297,17 @@ class MonteCarloAgent(Agent):
             session.simulate_game(move_played)
 
 
-class DQNAgent(Agent):
-    """An agent trained with a Deep-Q Learning Neural Network"""
-    network = tf.keras.models.load_model("current_model")
-
-    def __init__(self):
-        super().__init__(AgentType.DQN)
-
-    def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
-        move_preds = get_move_predictions(DQNAgent.network, moves, state)
-        chosen_move_index = move_preds[:, 0].argmax()
-        return moves[chosen_move_index]
+# class DQNAgent(Agent):
+#     """An agent trained with a Deep-Q Learning Neural Network"""
+#     network = tf.keras.models.load_model("current_model")
+#
+#     def __init__(self):
+#         super().__init__(AgentType.DQN)
+#
+#     def choose(self, moves: List[Moves.Move], player: Player, state: GameSession) -> Moves.Move:
+#         move_preds = get_move_predictions(DQNAgent.network, moves, state)
+#         chosen_move_index = move_preds[:, 0].argmax()
+#         return moves[chosen_move_index]
 
 
 def find_sim_player(session: GameSession, player: Player) -> Player:
