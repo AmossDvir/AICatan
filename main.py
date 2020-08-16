@@ -29,7 +29,6 @@ AGENTS = {
     PROBABILITY_AGENT: Agent.ProbabilityAgent(),
     MONTECARLO_AGENT: Agent.MonteCarloAgent(Heuristics.Everything()),
     GENETIC_AGENT: Agent.MonteCarloAgent(Heuristics.Everything(weights=GENETIC_WEIGHTS))
-
 }
 DEFAULT_AGENTS = [RANDOM_AGENT]
 PLAYER_NAMES = ['Roy', 'Boaz', 'Oriane', 'Amoss']
