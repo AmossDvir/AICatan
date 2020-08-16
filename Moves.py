@@ -156,6 +156,9 @@ class ThrowMove(Move):
         """:returns an informative string about this throw move"""
         return f'[MOVE] player = {self.player()}, type = {self.get_type()}, throws = {self.throws()}'
 
+    def info(self) -> str:
+        return f'[MOVE] player = {self.player()}, type = {self.get_type()}, throws = {self.throws()}'
+
 
 class BuildMove(Move):
     """A Move that builds a Buildable on the board"""

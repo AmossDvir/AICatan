@@ -77,14 +77,14 @@ class GameSession:
             self.__curr_player_sim = curr_player
             self.__dev_cards_bought_this_turn = Hand.Hand()  # to know if player can use a dev card
             if self.__num_turns_played % 10 == 0:
-                print(self.__num_turns_played, self.__curr_player_sim, 'playing...')
-            print(*('{} = {}  '.format(p, p.vp()) for p in self.players()))
+                dprint(self.__num_turns_played, self.__curr_player_sim, 'playing...')
+            dprint(*('{} = {}  '.format(p, p.vp()) for p in self.players()))
 
             self.__dice.roll()
-            dprint('\n\n' + '*' * 100)
-            dprint('*' * 45, 'NEXT TURN', '*' * 44)
-            dprint('*' * 100 + '\n')
-            dprint(f'[RUN GAME] Rolling dice... {self.__dice.sum()} rolled')
+            print('\n\n' + '*' * 100)
+            print('*' * 45, 'NEXT TURN', '*' * 44)
+            print('*' * 100 + '\n')
+            print(f'[RUN GAME] Rolling dice... {self.__dice.sum()} rolled')
             if self.__dice.sum() == Consts.ROBBER_DICE_VALUE:  # robber activated
                 dprint('[RUN GAME] Robber Activated! Checking for oversized hands...')
 
@@ -132,7 +132,7 @@ class GameSession:
             dprint('\n'.join(m.info() for m in moves_available) + '\n')
             move_to_play = curr_player.choose(moves_available, deepcopy(self))
 
-            dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
+            print(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
 
             vp_before = curr_player.vp()
             self.__apply_move(move_to_play)
@@ -148,7 +148,7 @@ class GameSession:
                 dprint(f'[RUN GAME] player {curr_player} can play:\n')
                 dprint('\n'.join(m.info() for m in moves_available) + '\n')
                 move_to_play = curr_player.choose(moves_available, deepcopy(self))
-                dprint(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
+                print(f'[RUN GAME] player {curr_player} is playing: {move_to_play.info()}')
 
                 vp_before = curr_player.vp()
                 self.__apply_move(move_to_play)
@@ -158,15 +158,13 @@ class GameSession:
                 if self.__logger:
                     self.__logger.write_session(deepcopy(self))
 
-            dprint(self.board())
-            dprint(self.status_table())
+            print(self.board())
+            print(self.status_table())
             self.__update_vp_histories()
             if self.is_game_over():
                 self.__phase = GamePhase.GAME_OVER
                 self.__possible_moves_this_phase = []
-                print(self.board())
-                print(self.status_table())
-                print(f'\n\n\nGAME OVER - player {curr_player} won!!!')
+                print(f'\n\n\nGAME OVER - {curr_player} won!!!')
                 print("Game Ended After", self.__num_turns_played, "Turns")
                 break
 
@@ -385,16 +383,16 @@ class GameSession:
         return string_table
 
     def __init_turn_order(self, *players: Player.Player) -> List[Player.Player]:
-        dprint('[CATAN] Catan game started, players rolling dice to establish turn order')
+        print('[CATAN] Catan game started, players rolling dice to establish turn order')
         rolls = []
         for player in players:
             if player is None:
                 continue
-            dprint(f'[CATAN] agent {player} rolled {self.__dice.roll()} = {self.__dice.sum()}')
+            print(f'[CATAN] agent {player} rolled {self.__dice.roll()} = {self.__dice.sum()}')
             rolls.append((self.__dice.sum(), player))
 
         rolls.sort(key=lambda x: x[0], reverse=True)  # from highest sum to lowest
-        dprint('[CATAN] turn order will be:\n' + '\n'.join(f'Player.Player {player}' for roll, player in rolls))
+        print('[CATAN] turn order will be:\n' + '\n'.join(f'Player.Player {player}' for roll, player in rolls))
         return [player for roll, player in rolls]
 
     def __restore(self, saved_self: GameSession) -> None:
@@ -412,8 +410,8 @@ class GameSession:
             self.__curr_turn_idx = (self.__curr_turn_idx + 1) % num_players
 
     def __run_pre_game(self) -> None:
-        dprint('[CATAN] Pre-Game started')
-        dprint(self.board())
+        print('[CATAN] Pre-Game started')
+        print(self.board())
         for _round in (1, 2):
             self.__pre_game_round = _round
             turn_gen = ((player for player in self.players())  # 0, 1, 2, 3
@@ -451,7 +449,7 @@ class GameSession:
                 curr_player.add_buildable(road)
                 self.__board.build(road)
 
-                dprint(f'[PRE GAME] player {curr_player} placed settlement at {hex(settlement_node)}, '
+                print(f'[PRE GAME] player {curr_player} placed settlement at {hex(settlement_node)}, '
                        f'road at {hex(road_edge)}')
 
                 if _round == 2:  # second round, yield resources from settlement
@@ -461,7 +459,7 @@ class GameSession:
                     dprint(f'[PRE GAME] player {curr_player} received {starting_resources} '
                            f'for his 2nd settlement at {hex(settlement_node)}')
 
-                dprint(self.board())
+                print(self.board())
                 dprint(self.status_table())
 
     def __robber_protocol(self, curr_player: Player.Player, robber_hex_id: int, opp: Player.Player,
